@@ -8,7 +8,7 @@ const AUTH_STORAGE_KEYS = {
     API_URL: 'crm_backend_url'
 };
 
-const DEFAULT_API_URL = 'https://localhost:64723';
+const DEFAULT_API_URL = 'http://chatroomcrm-001-site1.ktempurl.com';
 
 // Initialize Auth state
 const Auth = {

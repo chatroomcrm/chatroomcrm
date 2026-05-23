@@ -260,10 +260,10 @@ const Settings = {
                             <div class="form-group">
                                 <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
                                     Webhook Callback URL
-                                    <span style="color: var(--theme-glow); font-size: 0.65rem; cursor: pointer; text-transform: none; font-weight: 600;" onclick="Settings.copyToClipboard('https://localhost:64723/api/webhook/meta?tenantId=' + Auth.getUser().tenantId, 'Webhook URL copied!')">📋 Copy</span>
+                                    <span style="color: var(--theme-glow); font-size: 0.65rem; cursor: pointer; text-transform: none; font-weight: 600;" onclick="Settings.copyToClipboard('http://chatroomcrm-001-site1.ktempurl.com/api/webhook/meta?tenantId=' + Auth.getUser().tenantId, 'Webhook URL copied!')">📋 Copy</span>
                                 </label>
                                 <div style="display:flex; gap:0.5rem; margin-top:0.3rem;">
-                                    <input type="text" readonly value="https://localhost:64723/api/webhook/meta?tenantId=${currentUser.tenantId}" style="background: rgba(255,255,255,0.02); color: var(--text-main); border-color: rgba(255,255,255,0.05); font-size:0.75rem; font-family:var(--font-mono); flex:1; padding: 0.5rem; border-radius: 6px;">
+                                    <input type="text" readonly value="http://chatroomcrm-001-site1.ktempurl.com/api/webhook/meta?tenantId=${currentUser.tenantId}" style="background: rgba(255,255,255,0.02); color: var(--text-main); border-color: rgba(255,255,255,0.05); font-size:0.75rem; font-family:var(--font-mono); flex:1; padding: 0.5rem; border-radius: 6px;">
                                 </div>
                             </div>
 
