@@ -1,0 +1,10 @@
+/* =========================================================================
+   CHATFLOW WHATSAPP CRM - BUNDLED CORE SYSTEM STYLES
+   ========================================================================= */
+
+@import './variables.css';
+@import './global.css';
+@import './dashboard.css';
+@import './chats.css';
+@import './kanban.css';
+@import './db-inspector.css';

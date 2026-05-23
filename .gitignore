@@ -1,0 +1,41 @@
+# =========================================================================
+# ChatRoom CRM - Global Git Ignore Presets
+# =========================================================================
+
+# --- Frontend Node & Build files ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+.vscode/
+
+# --- Backend C# / .NET Build Artifacts ---
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.userosscache
+*.sln.docstates
+
+# --- Database & Local State ---
+*.db
+*.sqlite
+*.sqlite3
+*.local
+.env
+.env.local
+.env.*.local
+
+# --- Operating System & Editor Files ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.idea/
+*.swp
+*.bak

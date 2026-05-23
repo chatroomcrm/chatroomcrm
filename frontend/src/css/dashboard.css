@@ -1,0 +1,176 @@
+/* =========================================================================
+   CHATFLOW WHATSAPP CRM - DASHBOARD WORKSPACE, HEADERS & METRICS STYLES
+   ========================================================================= */
+
+/* Main Full Screen Container */
+.saas-container {
+  display: grid;
+  grid-template-rows: 70px 1fr;
+  height: 100vh;
+  overflow: hidden;
+  position: relative;
+}
+
+/* CRM Navigation Header */
+.saas-header {
+  background: var(--bg-secondary);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  z-index: 100;
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.header-logo .logo-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--theme-glow) 0%, var(--theme-glow-end) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #0a0f1d;
+  font-size: 1.1rem;
+  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.2);
+}
+
+.header-logo h1 {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.saas-nav {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: var(--transition-smooth);
+}
+
+.nav-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.nav-btn.active {
+  color: #0a0f1d;
+  background: linear-gradient(135deg, var(--theme-glow) 0%, var(--theme-glow-end) 100%);
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 242, 254, 0.15);
+}
+
+/* Page Workspace View Panel */
+.saas-content {
+  padding: 2rem;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.view-pane {
+  display: none;
+  height: 100%;
+}
+
+.view-pane.active {
+  display: block;
+}
+
+/* Dashboard Analytics Grid */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.metric-card {
+  composes: glass-panel glow-accent;
+  border-radius: 16px;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.metric-header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.metric-val {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+}
+
+.metric-footer {
+  font-size: 0.7rem;
+  color: var(--accent-emerald);
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.metric-footer.negative {
+  color: var(--accent-rose);
+}
+
+/* Graphs Layout Section */
+.dashboard-graphs-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-graphs-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.graph-card {
+  composes: glass-panel;
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.graph-card h3 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}

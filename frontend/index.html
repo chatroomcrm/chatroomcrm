@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatRoom CRM — WhatsApp CRM SaaS Platform</title>
+  <link rel="icon" type="image/png" href="images/logo-mark.png?v=3">
+  
+  <!-- Modern Google Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Consolidated Modular CSS Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/global.css">
+  <link rel="stylesheet" href="css/login.css">
+  <link rel="stylesheet" href="css/platform-admin.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/chats.css">
+  <link rel="stylesheet" href="css/kanban.css">
+  <link rel="stylesheet" href="css/db-inspector.css">
+  <link rel="stylesheet" href="css/settings.css">
+</head>
+<body>
+
+  <!-- =========================================================================
+     HIGH-FIDELITY GLASSMORPHIC ROLE-BASED LOGIN OVERLAY
+     ========================================================================= -->
+  <div id="login-overlay">
+    <canvas id="login-particles" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;"></canvas>
+    <div class="login-card" style="z-index: 2;">
+      <div class="login-header" style="margin-bottom: 0.5rem; gap: 0.25rem;">
+        <img src="images/logo.png?v=6" alt="ChatRoom CRM" class="login-logo-img">
+        <p class="login-tagline">Convert Conversations into Customers</p>
+      </div>
+
+      <!-- Action Form -->
+      <form class="login-form" onsubmit="handleLoginSubmit(event)">
+        <div class="login-error-box" id="login-err-box">Invalid credentials.</div>
+        
+
+
+        <div class="login-form-group">
+          <label for="login-email">Email Address</label>
+          <div class="login-input-wrapper">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <input type="email" id="login-email" class="login-input" placeholder="e.g. admin@acme.com" required>
+          </div>
+        </div>
+
+        <div class="login-form-group">
+          <label for="login-password">Access Password</label>
+          <div class="login-input-wrapper">
+            <svg class="login-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input type="password" id="login-password" class="login-input" placeholder="Password credentials" required>
+          </div>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.15rem; margin-bottom: 0.25rem; user-select: none;">
+          <input type="checkbox" id="login-remember" style="accent-color: var(--theme-glow); cursor: pointer; width: 14px; height: 14px;">
+          <label for="login-remember" style="font-size: 0.75rem; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 0.25rem;">
+            Remember Login 🔑
+          </label>
+        </div>
+
+        <button type="submit" class="login-submit-btn" id="btn-login-submit">
+          Log In 🔓
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+     CORE WORKSPACE LAYOUT
+     ========================================================================= -->
+  <div class="app-container">
+    
+
+
+    <!-- RIGHT PANEL: ChatFlow SaaS CRM Agent Workspace -->
+    <div class="saas-container">
+      
+      <!-- SaaS Core Header -->
+      <div class="saas-header">
+        <div class="header-logo">
+          <div class="logo-icon" id="saas-logo-icon">CR</div>
+          <h1 id="saas-brand-lbl">ChatRoom CRM</h1>
+        </div>
+
+        <!-- Section Navigation Tabs -->
+        <div class="saas-nav">
+          <button class="nav-btn active" onclick="switchView('dashboard', this)">
+            Dashboard
+          </button>
+          <button class="nav-btn" onclick="switchView('chats', this)">
+            Real-Time Chats
+          </button>
+          <button class="nav-btn" onclick="switchView('kanban', this)">
+            Leads Board
+          </button>
+          <button class="nav-btn" onclick="switchView('database', this)">
+            SQL Database Viewer
+          </button>
+          <button class="nav-btn" onclick="switchView('settings', this)">
+            Branding Settings
+          </button>
+        </div>
+
+        <!-- Session control -->
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div id="user-profile-badge" style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); padding: 0.35rem 0.75rem; border-radius: 30px;">
+            <div id="user-avatar" style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, var(--theme-glow), var(--theme-glow-end)); color: #0a0f1d; font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; justify-content: center;">US</div>
+            <div style="text-align: left; display: flex; flex-direction: column;">
+              <span id="user-display-name" style="font-size: 0.75rem; font-weight: 600; color: var(--text-main);">User Profile</span>
+              <span id="user-display-role" style="font-size: 0.6rem; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase;">Role</span>
+            </div>
+          </div>
+          <button class="nav-btn" onclick="Auth.logout()" style="color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.2); background: rgba(244, 63, 94, 0.05);">
+            Logout 🔒
+          </button>
+        </div>
+      </div>
+
+      <!-- Main CRM Workspaces -->
+      <div class="saas-content">
+        
+        <!-- ================= VIEW: DASHBOARD ================= -->
+        <div id="view-dashboard" class="view-pane active">
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-header">Total Leads</div>
+              <div class="metric-val" id="metric-total-leads">0</div>
+              <div class="metric-footer">
+                <span>↑ 15% this week</span>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">Won Conversion</div>
+              <div class="metric-val" id="metric-conversion-rate">0%</div>
+              <div class="metric-footer">
+                <span>Excellent conversion</span>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">Active Chats</div>
+              <div class="metric-val" id="metric-active-chats">0</div>
+              <div class="metric-footer" style="color: var(--theme-glow);">
+                <span>Dynamic real-time active</span>
+              </div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-header">Avg Response Time</div>
+              <div class="metric-val" id="metric-response-time">1.8m</div>
+              <div class="metric-footer">
+                <span>⚡ Hyper fast response</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-graphs-layout">
+            <!-- Custom Area Chart (Volume trend) -->
+            <div class="graph-card">
+              <h3>WhatsApp Message Velocity (Last 7 Days)</h3>
+              <div style="height: 240px; position:relative;" id="velocity-chart-wrapper">
+                <svg viewBox="0 0 500 200" style="width: 100%; height:100%;">
+                  <!-- Background grid lines -->
+                  <line x1="0" y1="50" x2="500" y2="50" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                  <line x1="0" y1="100" x2="500" y2="100" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                  <line x1="0" y1="150" x2="500" y2="150" stroke="rgba(255,255,255,0.03)" stroke-width="1" />
+                  
+                  <!-- Area Fill -->
+                  <path d="M 0 170 Q 80 130 160 140 T 320 80 T 480 40 L 480 200 L 0 200 Z" fill="url(#area-gradient)" opacity="0.15" />
+                  
+                  <!-- Curved Line -->
+                  <path d="M 0 170 Q 80 130 160 140 T 320 80 T 480 40" fill="none" stroke="url(#line-gradient)" stroke-width="3" />
+                  
+                  <!-- Circles on points -->
+                  <circle cx="160" cy="140" r="4" fill="var(--theme-glow)" />
+                  <circle cx="320" cy="80" r="4" fill="var(--theme-glow)" />
+                  <circle cx="480" cy="40" r="4" fill="var(--theme-glow)" />
+                  
+                  <defs>
+                    <linearGradient id="area-gradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--theme-glow)" />
+                      <stop offset="100%" stop-color="transparent" />
+                    </linearGradient>
+                    <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="var(--theme-glow)" />
+                      <stop offset="100%" stop-color="var(--theme-glow-end)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Custom Donut Chart (Lead pipeline ratios) -->
+            <div class="graph-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+              <h3>Lead Distribution</h3>
+              <div style="height: 180px; display: flex; align-items: center; justify-content: center; position: relative;" id="donut-chart-wrapper">
+                <svg viewBox="0 0 100 100" style="width: 140px; height: 140px; transform: rotate(-90deg);">
+                  <circle cx="50" cy="50" r="38" fill="transparent" stroke="rgba(255,255,255,0.03)" stroke-width="12" />
+                  
+                  <!-- Segment 1: Won (25% = 59.69) -->
+                  <circle cx="50" cy="50" r="38" fill="transparent" stroke="var(--accent-emerald)" stroke-width="12" 
+                    stroke-dasharray="59.69 238.76" stroke-dashoffset="0" />
+                  
+                  <!-- Segment 2: Lost (25% = offset 59.69) -->
+                  <circle cx="50" cy="50" r="38" fill="transparent" stroke="var(--accent-rose)" stroke-width="12" 
+                    stroke-dasharray="59.69 238.76" stroke-dashoffset="-59.69" />
+                  
+                  <!-- Segment 3: In Progress (50% = offset 119.38) -->
+                  <circle cx="50" cy="50" r="38" fill="transparent" stroke="var(--theme-glow)" stroke-width="12" 
+                    stroke-dasharray="119.38 238.76" stroke-dashoffset="-119.38" />
+                </svg>
+                <div style="position: absolute; text-align: center;">
+                  <span style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Won ratio</span>
+                  <div style="font-family: var(--font-display); font-size: 1.25rem; font-weight:700;">25%</div>
+                </div>
+              </div>
+              
+              <div style="font-size: 0.75rem; display: flex; justify-content: space-around; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                <span style="display: flex; align-items:center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius:50%; background: var(--accent-emerald);"></span> Won</span>
+                <span style="display: flex; align-items:center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius:50%; background: var(--accent-rose);"></span> Lost</span>
+                <span style="display: flex; align-items:center; gap: 0.25rem;"><span style="width: 8px; height: 8px; border-radius:50%; background: var(--theme-glow);"></span> Pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= VIEW: REAL-TIME CHATS ================= -->
+        <div id="view-chats" class="view-pane">
+          <div class="chat-layout">
+            <!-- Chat Sidebar Threads -->
+            <div class="chat-sidebar">
+              <div class="chat-sidebar-header">Conversations</div>
+              <div class="chat-threads-list" id="crm-threads-container">
+                <!-- Threads list populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Core Chat Panel window -->
+            <div class="crm-chat-panel">
+              <div class="crm-chat-header">
+                <div>
+                  <h4 id="crm-chat-active-name" style="font-family: var(--font-display); font-weight:600;">Select Conversation</h4>
+                  <span id="crm-chat-active-phone" style="font-size: 0.75rem; color: var(--accent-emerald);">No chat selected</span>
+                </div>
+                <span id="crm-chat-active-status" style="display: none;">NEW</span>
+              </div>
+
+              <!-- Message Stream logs -->
+              <div class="crm-chat-logs" id="crm-chat-logs-container">
+                <!-- Message items populating dynamically -->
+              </div>
+
+              <!-- Reply Input Bar -->
+              <div class="crm-chat-input-bar">
+                <input type="text" id="crm-input-reply" placeholder="Type customer reply...">
+                <button onclick="sendOutboundMessage()">
+                  Send <svg style="width: 12px; height: 12px; fill: #0a0f1d;" viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= VIEW: KANBAN BOARD ================= -->
+        <div id="view-kanban" class="view-pane">
+          <div class="kanban-grid">
+            <!-- Column 1: New -->
+            <div class="kanban-col" ondragover="Kanban.allowDrop(event)" ondrop="Kanban.handleDrop(event, 'New')">
+              <div class="kanban-col-header col-new">
+                <h4>New</h4>
+                <span class="count" id="count-New">0</span>
+              </div>
+              <div class="kanban-cards-container" id="kanban-New"></div>
+            </div>
+
+            <!-- Column 2: Contacted -->
+            <div class="kanban-col" ondragover="Kanban.allowDrop(event)" ondrop="Kanban.handleDrop(event, 'Contacted')">
+              <div class="kanban-col-header col-contacted">
+                <h4>Contacted</h4>
+                <span class="count" id="count-Contacted">0</span>
+              </div>
+              <div class="kanban-cards-container" id="kanban-Contacted"></div>
+            </div>
+
+            <!-- Column 3: Qualified -->
+            <div class="kanban-col" ondragover="Kanban.allowDrop(event)" ondrop="Kanban.handleDrop(event, 'Qualified')">
+              <div class="kanban-col-header col-qualified">
+                <h4>Qualified</h4>
+                <span class="count" id="count-Qualified">0</span>
+              </div>
+              <div class="kanban-cards-container" id="kanban-Qualified"></div>
+            </div>
+
+            <!-- Column 4: Proposal -->
+            <div class="kanban-col" ondragover="Kanban.allowDrop(event)" ondrop="Kanban.handleDrop(event, 'Proposal')">
+              <div class="kanban-col-header col-proposal">
+                <h4>Proposal</h4>
+                <span class="count" id="count-Proposal">0</span>
+              </div>
+              <div class="kanban-cards-container" id="kanban-Proposal"></div>
+            </div>
+
+            <!-- Column 5: Won -->
+            <div class="kanban-col" ondragover="Kanban.allowDrop(event)" ondrop="Kanban.handleDrop(event, 'Won')">
+              <div class="kanban-col-header col-won">
+                <h4>Won</h4>
+                <span class="count" id="count-Won">0</span>
+              </div>
+              <div class="kanban-cards-container" id="kanban-Won"></div>
+            </div>
+
+            <!-- Column 6: Lost -->
+            <div class="kanban-col" ondragover="Kanban.allowDrop(event)" ondrop="Kanban.handleDrop(event, 'Lost')">
+              <div class="kanban-col-header col-lost">
+                <h4>Lost</h4>
+                <span class="count" id="count-Lost">0</span>
+              </div>
+              <div class="kanban-cards-container" id="kanban-Lost"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= VIEW: SQL DATABASE VIEWER ================= -->
+        <div id="view-database" class="view-pane">
+          <div class="db-inspector">
+            <div>
+              <h3>SQL Server Live Database Inspector</h3>
+              <p>Relational state of the local tables. Watch keys, rows, and constraints update instantly as chat activities trigger webhook handlers.</p>
+            </div>
+
+            <div class="db-tabs">
+              <button class="db-tab-btn active" onclick="DbInspector.switchTable('Tenants', this)">Tenants (SaaS)</button>
+              <button class="db-tab-btn" onclick="DbInspector.switchTable('Users', this)">Users (Staff)</button>
+              <button class="db-tab-btn" onclick="DbInspector.switchTable('Contacts', this)">Contacts</button>
+              <button class="db-tab-btn" onclick="DbInspector.switchTable('Leads', this)">Leads</button>
+              <button class="db-tab-btn" onclick="DbInspector.switchTable('Messages', this)">Messages</button>
+              <button class="db-tab-btn" onclick="DbInspector.switchTable('Tasks', this)">Tasks</button>
+            </div>
+
+            <div class="db-table-wrapper">
+              <table class="db-table" id="db-inspector-table">
+                <!-- Database rows render dynamically -->
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= VIEW: WHITE-LABEL / PLATFORM ADMIN ================= -->
+        <div id="view-settings" class="view-pane">
+          <!-- Dynamic settings or platform admin console renders here -->
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Real-time In-App Message Alert Box toast -->
+  <div class="toast" id="system-toast">
+    <div style="width:10px; height:10px; background:var(--theme-glow); border-radius:50%;" class="animate-pulse"></div>
+    <div style="font-size:0.75rem;">
+      <strong id="toast-title" style="display:block; color:var(--text-main);">New WhatsApp Message</strong>
+      <span id="toast-body" style="color:var(--text-muted);">Incoming webhook connection...</span>
+    </div>
+  </div>
+
+  <!-- Bottom Core JS Modules -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+  <script src="js/roles.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/kanban.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/particles.js"></script>
+</body>
+</html>
