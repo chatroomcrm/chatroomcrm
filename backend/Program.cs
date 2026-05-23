@@ -1,0 +1,151 @@
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using ChatFlowCrm.Data;
+using ChatFlowCrm.Entities;
+using ChatFlowCrm.Services;
+using ChatFlowCrm.SignalR;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Database Configuration (SQL Server)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? "Server=(localdb)\\MSSQLLocalDB;Database=chatflow_db;Trusted_Connection=True;TrustServerCertificate=True;";
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString));
+
+// 2. Dependency Injection
+builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>();
+builder.Services.AddSingleton<IDbLoggerService, DbLoggerService>();
+
+// 3. Register Controllers and Hubs
+builder.Services.AddControllers();
+builder.Services.AddSignalR();
+
+// Swagger API Generation
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "ChatFlow WhatsApp CRM API",
+        Version = "v1",
+        Description = "Multi-Tenant WhatsApp CRM SaaS Platform API with 3-tier Role-Based Access Control."
+    });
+
+    // Configure Swagger to use JWT Bearer Authentication
+    var securityScheme = new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "JWT Authentication",
+        Description = "Enter JWT Bearer token only (do NOT include the 'Bearer ' prefix, as it will be prefixed automatically or enter 'Bearer <token>' manually)",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Reference = new Microsoft.OpenApi.Models.OpenApiReference
+        {
+            Id = "Bearer",
+            Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme
+        }
+    };
+    c.AddSecurityDefinition("Bearer", securityScheme);
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        { securityScheme, Array.Empty<string>() }
+    });
+});
+
+// 4. JWT Authentication Setup
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "SUPER_SECRET_CHATFLOW_SECURITY_KEY_2026";
+var key = Encoding.ASCII.GetBytes(jwtKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.RequireHttpsMetadata = false;
+    options.SaveToken = true;
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(key),
+        ValidateIssuer = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ChatFlowCrm",
+        ValidateAudience = true,
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "ChatFlowClients",
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.Zero
+    };
+
+    // Supporting JWTs inside SignalR Websocket connections
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            var accessToken = context.Request.Query["access_token"];
+            var path = context.HttpContext.Request.Path;
+            if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/chathub"))
+            {
+                context.Token = accessToken;
+            }
+            return Task.CompletedTask;
+        }
+    };
+});
+
+// 5. CORS policy configurations
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyHeader()
+              .AllowAnyMethod()
+              .SetIsOriginAllowed(_ => true) // Crucial for SignalR local dev
+              .AllowCredentials();
+    });
+});
+
+var app = builder.Build();
+
+// Enable Swagger OpenAPI UI
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ChatFlow CRM API v1");
+    c.RoutePrefix = "swagger"; // accessible at http://localhost:5000/swagger
+});
+
+// Enable Database Logging exception handling middleware first to capture any exception downstream
+app.UseMiddleware<ChatFlowCrm.Middleware.ExceptionMiddleware>();
+
+app.UseCors("AllowAll");
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHub<ChatHub>("/chathub");
+
+// Simple API status check
+app.MapGet("/", () => Results.Ok(new { name = "ChatFlow WhatsApp CRM API", status = "Healthy", version = "1.0.0" }));
+
+// Automatically seed a default Tenant and User on startup if empty (for direct convenience!)
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    try
+    {
+        // EF Core database migration or creation
+        context.Database.EnsureCreated();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error seeding DB: {ex.Message}");
+    }
+}
+
+app.Run();

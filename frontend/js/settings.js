@@ -246,6 +246,48 @@ const Settings = {
                             </table>
                         </div>
                     </div>
+
+                    <!-- Meta Webhook / API Integration Card -->
+                    <div class="settings-card" style="display:flex; flex-direction:column; gap:1rem; grid-column: span 2;">
+                        <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; border-left: 3px solid var(--theme-glow); padding-left: 0.5rem; margin:0; display:flex; align-items:center; gap:0.5rem;">
+                            🔌 Meta Cloud API Webhook Integration
+                        </h3>
+                        <p style="color:var(--text-muted); font-size:0.75rem; margin:0;">
+                            Connect your native <strong>WhatsApp Business Platform (Meta Cloud API)</strong> directly. Copy these parameters and configure them in your Meta Developer Console to receive messages in real time.
+                        </p>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 0.5rem;">
+                            <div class="form-group">
+                                <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+                                    Webhook Callback URL
+                                    <span style="color: var(--theme-glow); font-size: 0.65rem; cursor: pointer; text-transform: none; font-weight: 600;" onclick="Settings.copyToClipboard('https://localhost:64723/api/webhook/meta?tenantId=' + Auth.getUser().tenantId, 'Webhook URL copied!')">📋 Copy</span>
+                                </label>
+                                <div style="display:flex; gap:0.5rem; margin-top:0.3rem;">
+                                    <input type="text" readonly value="https://localhost:64723/api/webhook/meta?tenantId=${currentUser.tenantId}" style="background: rgba(255,255,255,0.02); color: var(--text-main); border-color: rgba(255,255,255,0.05); font-size:0.75rem; font-family:var(--font-mono); flex:1; padding: 0.5rem; border-radius: 6px;">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
+                                    Verification Token (Verify Token)
+                                    <span style="color: var(--theme-glow); font-size: 0.65rem; cursor: pointer; text-transform: none; font-weight: 600;" onclick="Settings.copyToClipboard('ChatRoomMetaToken2026', 'Verification Token copied!')">📋 Copy</span>
+                                </label>
+                                <div style="display:flex; gap:0.5rem; margin-top:0.3rem;">
+                                    <input type="text" readonly value="ChatRoomMetaToken2026" style="background: rgba(255,255,255,0.02); color: var(--text-main); border-color: rgba(255,255,255,0.05); font-size:0.75rem; font-family:var(--font-mono); flex:1; padding: 0.5rem; border-radius: 6px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(0, 242, 254, 0.03); border: 1px dashed rgba(0, 242, 254, 0.15); border-radius: 8px; padding: 0.85rem; margin-top: 0.5rem;">
+                            <h4 style="margin: 0 0 0.4rem 0; font-size: 0.75rem; color: #fff; font-weight:600; font-family: var(--font-display);">💡 Meta Setup Instructions:</h4>
+                            <ol style="margin: 0; padding-left: 1.1rem; color: var(--text-muted); font-size: 0.7rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                <li>Log in to the <strong><a href="https://developers.facebook.com/" target="_blank" style="color: var(--theme-glow); text-decoration: underline;">Meta Developer Console</a></strong> and select your App.</li>
+                                <li>Under <strong>WhatsApp &gt; Configuration</strong>, click <strong>Edit</strong> in the Webhooks section.</li>
+                                <li>Paste the <strong>Webhook Callback URL</strong> and <strong>Verification Token</strong> shown above.</li>
+                                <li>Click <strong>Verify and Save</strong>. Then click <strong>Manage</strong> and subscribe to the <strong>messages</strong> webhook field.</li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -953,5 +995,27 @@ const Settings = {
             triggerToast("Save Error", err.message);
             logConsole(`[Branding API Error] saveBrandingSettings failed: ${err.message}`);
         }
+    },
+
+    copyToClipboard(text, message) {
+        navigator.clipboard.writeText(text).then(() => {
+            triggerToast("Copied!", message || "Text copied to clipboard!");
+        }).catch(err => {
+            logConsole(`[Clipboard Error] Failed to copy text: ${err}`);
+            // Fallback for older browsers
+            const input = document.createElement('textarea');
+            input.value = text;
+            input.style.position = 'fixed';
+            input.style.opacity = '0';
+            document.body.appendChild(input);
+            input.select();
+            try {
+                document.execCommand('copy');
+                triggerToast("Copied!", message || "Text copied to clipboard!");
+            } catch (e) {
+                triggerToast("Error", "Failed to copy text.");
+            }
+            document.body.removeChild(input);
+        });
     }
 };
