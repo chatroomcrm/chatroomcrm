@@ -134,8 +134,20 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/chathub");
 
-// Simple API status check
-app.MapGet("/", () => Results.Ok(new { name = "ChatFlow WhatsApp CRM API", status = "Healthy", version = "1.0.0" }));
+// Simple API status check with automatic static index.html fallback
+app.MapGet("/", async (HttpContext context) =>
+{
+    var indexFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+    if (File.Exists(indexFile))
+    {
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(indexFile);
+    }
+    else
+    {
+        await context.Response.WriteAsJsonAsync(new { name = "ChatFlow WhatsApp CRM API", status = "Healthy", version = "1.0.0" });
+    }
+});
 
 // Automatically seed a default Tenant and User on startup if empty (for direct convenience!)
 using (var scope = app.Services.CreateScope())
