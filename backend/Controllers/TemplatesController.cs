@@ -70,9 +70,8 @@ namespace ChatFlowCrm.Controllers
                 return BadRequest("Please upload a valid CSV template file.");
             }
 
-            var resolvedTenantId = ResolveTenantId(tenantId);
-            tenantId = resolvedTenantId; // Re-assign resolved value for downstream logic
-            var tenant = await _context.Tenants.FindAsync(tenantId);
+            var finalTenantId = ResolveTenantId(tenantId);
+            var tenant = await _context.Tenants.FindAsync(finalTenantId);
             if (tenant == null)
             {
                 return BadRequest("Tenant not found.");
@@ -138,28 +137,28 @@ namespace ChatFlowCrm.Controllers
                             if (metaSuccess)
                             {
                                 status = "Approved";
-                                await _logger.LogInfoAsync($"Successfully registered message template '{name}' programmatically on Meta WhatsApp API.", "TemplatesController.Upload", tenantId);
+                                await _logger.LogInfoAsync($"Successfully registered message template '{name}' programmatically on Meta WhatsApp API.", "TemplatesController.Upload", finalTenantId);
                             }
                             else
                             {
                                 status = "Pending"; // Meta API failed, keep as Pending review
-                                await _logger.LogWarningAsync($"Meta API rejected template creation for '{name}'. Saved locally as Pending.", "TemplatesController.Upload", tenantId);
+                                await _logger.LogWarningAsync($"Meta API rejected template creation for '{name}'. Saved locally as Pending.", "TemplatesController.Upload", finalTenantId);
                             }
                         }
                         catch (Exception ex)
                         {
                             status = "Pending";
-                            await _logger.LogErrorAsync($"Error programmatically creating template '{name}' on Meta. Saved locally as Pending.", ex, "TemplatesController.Upload", tenantId);
+                            await _logger.LogErrorAsync($"Error programmatically creating template '{name}' on Meta. Saved locally as Pending.", ex, "TemplatesController.Upload", finalTenantId);
                         }
                     }
                     else
                     {
-                        await _logger.LogInfoAsync($"Meta Business credentials missing for Tenant. Template '{name}' saved locally for sandbox offline simulation.", "TemplatesController.Upload", tenantId);
+                        await _logger.LogInfoAsync($"Meta Business credentials missing for Tenant. Template '{name}' saved locally for sandbox offline simulation.", "TemplatesController.Upload", finalTenantId);
                     }
 
                     // 2. Check for duplicate templates to prevent duplicates in local DB
                     var existing = await _context.TenantTemplates
-                        .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Name == name);
+                        .FirstOrDefaultAsync(t => t.TenantId == finalTenantId && t.Name == name);
 
                     if (existing != null)
                     {
@@ -175,7 +174,7 @@ namespace ChatFlowCrm.Controllers
                     {
                         var newTemplate = new TenantTemplate
                         {
-                            TenantId = tenantId,
+                            TenantId = finalTenantId,
                             Name = name,
                             Category = category,
                             Language = language,
@@ -192,7 +191,7 @@ namespace ChatFlowCrm.Controllers
             }
             catch (Exception ex)
             {
-                await _logger.LogErrorAsync($"Fatal error parsing template CSV upload: {ex.Message}", ex, "TemplatesController.Upload", tenantId);
+                await _logger.LogErrorAsync($"Fatal error parsing template CSV upload: {ex.Message}", ex, "TemplatesController.Upload", finalTenantId);
                 return StatusCode(500, $"An error occurred parsing CSV file: {ex.Message}");
             }
 
