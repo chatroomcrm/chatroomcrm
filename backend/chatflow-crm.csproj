@@ -23,8 +23,8 @@
     <Folder Include="Properties\PublishProfiles\" />
   </ItemGroup>
 
-  <!-- Automatically copy frontend static files into wwwroot before build or publish -->
-  <Target Name="CopyFrontendToWwwroot" BeforeTargets="Build;Publish">
+  <!-- Automatically copy frontend static files into wwwroot before target paths assignment (very early in the build) -->
+  <Target Name="CopyFrontendToWwwroot" BeforeTargets="AssignTargetPaths">
     <ItemGroup>
       <FrontendFiles Include="..\frontend\**\*.*" Exclude="..\frontend\node_modules\**\*.*;..\frontend\.vscode\**\*.*" />
     </ItemGroup>
