@@ -52,7 +52,7 @@ namespace ChatFlowCrm.Services
         public Task LogInfoAsync(string message, string? source = null, Guid? tenantId = null)
         {
             Console.WriteLine($"[INFO] {source ?? "System"}: {message}");
-            return Task.CompletedTask;
+            return SaveLogAsync("Info", message, null, source, tenantId);
         }
 
         public Task LogWarningAsync(string message, string? source = null, Guid? tenantId = null)
