@@ -1,0 +1,6 @@
+Name,Category,Language,Body
+welcome_customer,UTILITY,en_US,"Hi {{1}}, thank you for contacting our support! We will get back to you shortly."
+payment_reminder,UTILITY,en_US,"Dear {{1}}, this is a friendly reminder that your payment for invoice {{2}} is due."
+feedback_request,UTILITY,en_US,"Hi {{1}}, how was your service today? Please reply with a rating from 1 to 5."
+special_discount,MARKETING,en_US,"Exciting news {{1}}! Get an exclusive 15% discount on your next order with code GROW15."
+appointment_confirmation,UTILITY,en_US,"Hi {{1}}, your appointment is confirmed for {{2}} at {{3}}."
