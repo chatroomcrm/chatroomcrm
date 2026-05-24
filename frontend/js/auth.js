@@ -30,12 +30,27 @@ const Auth = {
     },
     
     getApiUrl() {
+        const currentOrigin = window.location.origin;
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
         let stored = localStorage.getItem(AUTH_STORAGE_KEYS.API_URL);
-        if (stored === 'http://localhost:5000') {
-            localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, DEFAULT_API_URL);
-            return DEFAULT_API_URL;
+        
+        if (!isLocalhost) {
+            // Self-healing: Force cloud URL if we are in the cloud (so localhost caches never bleed in)
+            if (!stored || stored.includes('localhost') || stored.includes('127.0.0.1')) {
+                localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, currentOrigin);
+                return currentOrigin;
+            }
+            return stored;
+        } else {
+            // Local dev: Fall back to default local backend SSL port
+            if (!stored || !stored.includes('localhost')) {
+                const localDefault = 'https://localhost:64723';
+                localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, localDefault);
+                return localDefault;
+            }
+            return stored;
         }
-        return stored || DEFAULT_API_URL;
     },
     
     isAuthenticated() {

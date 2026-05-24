@@ -19,4 +19,16 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Properties\PublishProfiles\" />
+  </ItemGroup>
+
+  <!-- Automatically copy frontend static files into wwwroot before build or publish -->
+  <Target Name="CopyFrontendToWwwroot" BeforeTargets="Build;Publish">
+    <ItemGroup>
+      <FrontendFiles Include="..\frontend\**\*.*" Exclude="..\frontend\node_modules\**\*.*;..\frontend\.vscode\**\*.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FrontendFiles)" DestinationFiles="@(FrontendFiles->'wwwroot\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

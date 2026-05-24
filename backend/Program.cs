@@ -124,6 +124,10 @@ app.UseMiddleware<ChatFlowCrm.Middleware.ExceptionMiddleware>();
 
 app.UseCors("AllowAll");
 
+// Enable static file serving from wwwroot to host the frontend seamlessly
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
