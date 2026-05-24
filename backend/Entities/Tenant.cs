@@ -11,6 +11,10 @@ namespace ChatFlowCrm.Entities
         public string ThemeColor { get; set; } = "#00f2fe|#4facfe"; // Default brand gradient
         public bool IsBlocked { get; set; } = false;
 
+        public string WhatsAppNumber { get; set; } = string.Empty;
+        public string MetaAccessToken { get; set; } = string.Empty;
+        public string MetaPhoneNumberId { get; set; } = string.Empty;
+
         // Navigation properties
         public ICollection<User> Users { get; set; } = new List<User>();
         public ICollection<Contact> Contacts { get; set; } = new List<Contact>();

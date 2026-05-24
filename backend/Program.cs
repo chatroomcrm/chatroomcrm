@@ -163,6 +163,20 @@ using (var scope = app.Services.CreateScope())
 
         // Self-healing: Ensure Timestamp column exists in Leads table for reporting
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Timestamp') BEGIN ALTER TABLE Leads ADD Timestamp DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(); END");
+
+        // Self-healing: Ensure WhatsApp columns exist in Tenants table for true multi-tenancy
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'WhatsAppNumber') BEGIN ALTER TABLE Tenants ADD WhatsAppNumber NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaAccessToken') BEGIN ALTER TABLE Tenants ADD MetaAccessToken NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaPhoneNumberId') BEGIN ALTER TABLE Tenants ADD MetaPhoneNumberId NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
+
+        // Self-healing: Seed active production credentials for Durga Enterprises if empty (Tenant GUID: 73349044-4ef4-405d-bd9f-6e6e06344860)
+        context.Database.ExecuteSqlRaw(@"
+            UPDATE Tenants 
+            SET WhatsAppNumber = '8143712528', 
+                MetaAccessToken = 'EAAOAfLtTZCVQBRoVxFN0yaAxuoNXenRPecUXHG3DN5tFH61sZB1wnTIpGDmhS1D61ZCUPkFXFcWKNZB4emxu48vfI9ZCJ8b7nj48RZBZCwl0UkldAlVU81E4sZC8ZB3qUIm6PDmWKOZAzUYUGeNCr0iHqEumB4ZBTqgWMzfJpZA5bhei89YfPIL7eBTvTnSiUQOeOgDm5nURrKnjOw1BUX1xVV7yWV1aoJ6WWcN1POeekXIMqr08aRYB2QMGRt7tRCnfB5rxODI3zLiQguxn3uL3CgaAQgZDZD', 
+                MetaPhoneNumberId = '1184346914753507' 
+            WHERE Id = '73349044-4ef4-405d-bd9f-6e6e06344860' 
+              AND (MetaAccessToken = '' OR MetaAccessToken IS NULL)");
     }
     catch (Exception ex)
     {

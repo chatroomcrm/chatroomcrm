@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ChatFlowCrm.Data;
 
 namespace ChatFlowCrm.Services
 {
@@ -14,21 +15,41 @@ namespace ChatFlowCrm.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<WhatsAppService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly AppDbContext _context;
 
-        public WhatsAppService(HttpClient httpClient, ILogger<WhatsAppService> logger, IConfiguration configuration)
+        public WhatsAppService(HttpClient httpClient, ILogger<WhatsAppService> logger, IConfiguration configuration, AppDbContext context)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
+            _context = context;
         }
 
         public async Task<bool> SendWhatsAppMessageAsync(string toPhone, string content, string providerConfig)
         {
             try
             {
-                // 1. Try Native Meta Cloud API Outbound Messaging first
-                var metaToken = _configuration["Meta:AccessToken"];
-                var metaPhoneId = _configuration["Meta:PhoneNumberId"];
+                // 1. Resolve dynamic Meta credentials from active Tenant database record
+                string? metaToken = null;
+                string? metaPhoneId = null;
+
+                if (Guid.TryParse(providerConfig, out var tenantId))
+                {
+                    var tenant = await _context.Tenants.FindAsync(tenantId);
+                    if (tenant != null && !string.IsNullOrEmpty(tenant.MetaAccessToken) && !string.IsNullOrEmpty(tenant.MetaPhoneNumberId))
+                    {
+                        metaToken = tenant.MetaAccessToken;
+                        metaPhoneId = tenant.MetaPhoneNumberId;
+                        _logger.LogInformation("Loaded dynamic Tenant credentials from DB for outbound Meta Cloud API. TenantId: {TenantId}", tenantId);
+                    }
+                }
+
+                // Fallback to static appsettings.json configuration if tenant credentials are empty
+                if (string.IsNullOrEmpty(metaToken) || string.IsNullOrEmpty(metaPhoneId))
+                {
+                    metaToken = _configuration["Meta:AccessToken"];
+                    metaPhoneId = _configuration["Meta:PhoneNumberId"];
+                }
 
                 if (!string.IsNullOrEmpty(metaToken) && !string.IsNullOrEmpty(metaPhoneId) && metaPhoneId != "PLACEHOLDER_PHONE_NUMBER_ID")
                 {
