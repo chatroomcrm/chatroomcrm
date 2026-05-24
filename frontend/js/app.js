@@ -148,9 +148,9 @@ async function bootstrapApp() {
         }
         const originalHtml = btn.getAttribute('data-original-html');
         
-        // SuperAdmin can see Dashboard, Templates, and Platform Settings. Hide Chats, Leads Board, and SQL DB Viewer!
+        // SuperAdmin can see Templates and Platform Settings. Hide Dashboard, Chats, Leads Board, and SQL DB Viewer!
         if (user.role === UserRoles.SuperAdmin) {
-            if (viewId === 'database' || viewId === 'kanban' || viewId === 'chats') {
+            if (viewId === 'database' || viewId === 'kanban' || viewId === 'chats' || viewId === 'dashboard') {
                 btn.style.display = 'none';
             } else {
                 btn.style.display = 'flex';
