@@ -14,6 +14,7 @@ namespace ChatFlowCrm.Entities
         public string WhatsAppNumber { get; set; } = string.Empty;
         public string MetaAccessToken { get; set; } = string.Empty;
         public string MetaPhoneNumberId { get; set; } = string.Empty;
+        public string MetaBusinessAccountId { get; set; } = string.Empty;
 
         // Navigation properties
         public ICollection<User> Users { get; set; } = new List<User>();

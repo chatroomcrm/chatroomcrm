@@ -16,6 +16,7 @@ namespace ChatFlowCrm.Data
         public DbSet<Message> Messages => Set<Message>();
         public DbSet<TaskItem> Tasks => Set<TaskItem>();
         public DbSet<LogEntry> LogEntries => Set<LogEntry>();
+        public DbSet<TenantTemplate> TenantTemplates => Set<TenantTemplate>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -74,6 +75,15 @@ namespace ChatFlowCrm.Data
                 .HasOne(t => t.Lead)
                 .WithMany(l => l.Tasks)
                 .HasForeignKey(t => t.LeadId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // TenantTemplate configurations
+            modelBuilder.Entity<TenantTemplate>()
+                .HasKey(t => t.Id);
+            modelBuilder.Entity<TenantTemplate>()
+                .HasOne(t => t.Tenant)
+                .WithMany()
+                .HasForeignKey(t => t.TenantId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // Indexes for database performance (crucial for SQL experience!)

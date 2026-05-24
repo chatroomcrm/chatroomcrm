@@ -168,15 +168,33 @@ using (var scope = app.Services.CreateScope())
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'WhatsAppNumber') BEGIN ALTER TABLE Tenants ADD WhatsAppNumber NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaAccessToken') BEGIN ALTER TABLE Tenants ADD MetaAccessToken NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaPhoneNumberId') BEGIN ALTER TABLE Tenants ADD MetaPhoneNumberId NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaBusinessAccountId') BEGIN ALTER TABLE Tenants ADD MetaBusinessAccountId NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
 
         // Self-healing: Seed active production credentials for Durga Enterprises if empty (Tenant GUID: 73349044-4ef4-405d-bd9f-6e6e06344860)
         context.Database.ExecuteSqlRaw(@"
             UPDATE Tenants 
             SET WhatsAppNumber = '8143712528', 
-                MetaAccessToken = 'EAAOAfLtTZCVQBRoVxFN0yaAxuoNXenRPecUXHG3DN5tFH61sZB1wnTIpGDmhS1D61ZCUPkFXFcWKNZB4emxu48vfI9ZCJ8b7nj48RZBZCwl0UkldAlVU81E4sZC8ZB3qUIm6PDmWKOZAzUYUGeNCr0iHqEumB4ZBTqgWMzfJpZA5bhei89YfPIL7eBTvTnSiUQOeOgDm5nURrKnjOw1BUX1xVV7yWV1aoJ6WWcN1POeekXIMqr08aRYB2QMGRt7tRCnfB5rxODI3zLiQguxn3uL3CgaAQgZDZD', 
-                MetaPhoneNumberId = '1184346914753507' 
-            WHERE Id = '73349044-4ef4-405d-bd9f-6e6e06344860' 
-              AND (MetaAccessToken = '' OR MetaAccessToken IS NULL)");
+                MetaAccessToken = 'EAAOAfLtTZCVQBRrLBQPHZAewl5gqXkqxT7ktxK7N8sIZCM1ZASN8zZBQatZBqhUmtwMsEA8m5ZCOsjBKktQY4hLQiOErd5N2zkXJVcDmCBXNF81P4NYm7ZBfr2nb3JDN7exkZBsN8rPI4BE04TSpmA3nBvNhbEBbV0tY3ZAtkJxZCSVhtDXDRWteaIS0HchcGnDOVrwAhxwDwUb4az2GUFiQwG9ZBvixDxqm62tiDfvFdZAQZBU4QX0ZB0krliWZC7ZAxI4MWRAk1rQT7GQW2PGTdicyANoai', 
+                MetaPhoneNumberId = '1184346914753507',
+                MetaBusinessAccountId = '1720827125758007'
+            WHERE Id = '73349044-4ef4-405d-bd9f-6e6e06344860'");
+
+        // Self-healing: Ensure TenantTemplates table exists
+        context.Database.ExecuteSqlRaw(@"
+            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'TenantTemplates')
+            BEGIN
+                CREATE TABLE TenantTemplates (
+                    Id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+                    TenantId UNIQUEIDENTIFIER NOT NULL,
+                    Name NVARCHAR(256) NOT NULL,
+                    Category NVARCHAR(64) NOT NULL,
+                    Language NVARCHAR(16) NOT NULL,
+                    Body NVARCHAR(MAX) NOT NULL,
+                    Status NVARCHAR(64) NOT NULL DEFAULT 'Approved',
+                    Timestamp DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
+                    CONSTRAINT FK_TenantTemplates_Tenants FOREIGN KEY (TenantId) REFERENCES Tenants(Id) ON DELETE CASCADE
+                );
+            END");
     }
     catch (Exception ex)
     {
