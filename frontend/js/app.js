@@ -148,9 +148,9 @@ async function bootstrapApp() {
         }
         const originalHtml = btn.getAttribute('data-original-html');
         
-        // SuperAdmin can see modules except SQL Database Viewer & Leads Board!
+        // SuperAdmin can see Dashboard, Templates, and Platform Settings. Hide Chats, Leads Board, and SQL DB Viewer!
         if (user.role === UserRoles.SuperAdmin) {
-            if (viewId === 'database' || viewId === 'kanban') {
+            if (viewId === 'database' || viewId === 'kanban' || viewId === 'chats') {
                 btn.style.display = 'none';
             } else {
                 btn.style.display = 'flex';
@@ -162,15 +162,15 @@ async function bootstrapApp() {
                 }
             }
         } else if (user.role === UserRoles.Agent) {
-            // Agent users only see Dashboard, Real-Time Chats, Kanban. Hide SQL Database Viewer and Branding Settings!
-            if (viewId === 'database' || viewId === 'settings') {
+            // Agent users only see Dashboard, Real-Time Chats, Kanban. Hide SQL Database Viewer, Templates, and Branding Settings!
+            if (viewId === 'database' || viewId === 'settings' || viewId === 'templates') {
                 btn.style.display = 'none';
             } else {
                 btn.style.display = 'flex';
                 btn.innerHTML = originalHtml;
             }
         } else {
-            // TenantAdmin shows Dashboard, Chats, Kanban, and Branding Settings but NOT SQL Database Viewer
+            // TenantAdmin shows Dashboard, Chats, Kanban, Templates, and Branding Settings but NOT SQL Database Viewer
             if (viewId === 'database') {
                 btn.style.display = 'none';
             } else {
@@ -209,6 +209,7 @@ async function bootstrapApp() {
     // Initialize sub-modules
     if (typeof Chat !== 'undefined') await Chat.initialize();
     if (typeof Kanban !== 'undefined') await Kanban.initialize();
+    if (typeof Templates !== 'undefined') await Templates.initialize();
     if (typeof DbInspector !== 'undefined') await DbInspector.initialize();
     if (typeof Settings !== 'undefined') await Settings.initialize();
 
@@ -242,6 +243,8 @@ function switchView(viewId, btn) {
     // Refresh view states
     if (viewId === 'dashboard') {
         updateDashboardStats();
+    } else if (viewId === 'templates' && typeof Templates !== 'undefined') {
+        Templates.loadTemplatesList();
     } else if (viewId === 'database' && typeof DbInspector !== 'undefined') {
         DbInspector.renderTable();
     } else if (viewId === 'settings' && typeof Settings !== 'undefined') {

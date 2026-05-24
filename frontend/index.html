@@ -99,6 +99,9 @@
           <button class="nav-btn" onclick="switchView('kanban', this)">
             Leads Board
           </button>
+          <button class="nav-btn" onclick="switchView('templates', this)">
+            Message Templates
+          </button>
           <button class="nav-btn" onclick="switchView('database', this)">
             SQL Database Viewer
           </button>
@@ -366,6 +369,80 @@
           </div>
         </div>
 
+        <!-- ================= VIEW: MESSAGE TEMPLATES ================= -->
+        <div id="view-templates" class="view-pane">
+          <div class="kanban-header-bar" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 1rem 1.5rem; border-radius: 12px; backdrop-filter: blur(10px);">
+            <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; color: var(--text-main); margin: 0;">WhatsApp Message Templates</h2>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Upload your spreadsheet templates to automatically register them in Meta and save them in the CRM database.</p>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: start;">
+            <!-- Left Panel: Upload Actions & Guides -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+              <!-- Upload Card -->
+              <div class="metric-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px; text-align: left;">
+                <h4 style="margin: 0 0 1rem 0; font-family: var(--font-display); color: var(--text-main); font-size: 0.95rem; font-weight: 600;">Bulk CSV Uploader 📤</h4>
+                
+                <form onsubmit="Templates.uploadCsv(event)">
+                  <div style="border: 2px dashed var(--border-color); border-radius: 8px; padding: 1.5rem 1rem; text-align: center; background: rgba(255,255,255,0.01); margin-bottom: 1rem; position: relative; transition: border-color 0.2s;" onmouseover="this.style.borderColor='var(--theme-glow)'" onmouseout="this.style.borderColor='var(--border-color)'">
+                    <input type="file" id="templates-csv-file" accept=".csv" style="position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;">
+                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</div>
+                    <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.25rem;">Choose templates.csv</div>
+                    <div style="font-size: 0.65rem; color: var(--text-muted);" id="templates-file-name">No file selected</div>
+                  </div>
+                  
+                  <button type="submit" id="btn-upload-templates" style="width: 100%; background: linear-gradient(135deg, var(--theme-glow), var(--theme-glow-end)); color: #0a0f1d; border: none; padding: 0.6rem; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.15s ease;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+                    Upload & Register ⚡
+                  </button>
+                </form>
+              </div>
+
+              <!-- Help Guide Card -->
+              <div class="metric-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px; text-align: left; font-size: 0.75rem;">
+                <h4 style="margin: 0 0 0.75rem 0; font-family: var(--font-display); color: var(--text-main); font-size: 0.95rem; font-weight: 600;">Onboarding Guide 📖</h4>
+                <p style="color: var(--text-muted); line-height: 1.4; margin-bottom: 1rem;">All templates are processed programmatically through Meta Cloud API and stored in your secure workspace database.</p>
+                
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem;">
+                  <strong style="color: var(--text-main); display: block; margin-bottom: 0.25rem;">Format Rules:</strong>
+                  <ul style="margin: 0; padding-left: 1rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem;">
+                    <li>Columns: Name, Category, Language, Body</li>
+                    <li>Lowercase underscores only for Name</li>
+                    <li>Use {{1}}, {{2}} for dynamic variables</li>
+                  </ul>
+                </div>
+
+                <a href="templates_sample.csv" download="templates_sample.csv" style="display: inline-flex; align-items: center; gap: 0.5rem; color: var(--theme-glow); text-decoration: none; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                  📥 Download Sample CSV
+                </a>
+              </div>
+            </div>
+
+            <!-- Right Panel: Grid table -->
+            <div class="metric-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 12px; padding: 0; overflow: hidden; height: 100%;">
+              <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-family: var(--font-display); color: var(--text-main); font-size: 0.95rem; font-weight: 600;">Templates Inventory</h3>
+                <span style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase;">Sync Status</span>
+              </div>
+              <div style="overflow-x: auto; max-height: 400px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                  <thead>
+                    <tr style="background: rgba(255, 255, 255, 0.02); border-bottom: 1px solid var(--border-color); font-size: 0.7rem; font-family: var(--font-mono); text-transform: uppercase; color: var(--text-muted);">
+                      <th style="padding: 0.8rem 1rem;">Template Name</th>
+                      <th style="padding: 0.8rem 1rem;">Category</th>
+                      <th style="padding: 0.8rem 1rem;">Language</th>
+                      <th style="padding: 0.8rem 1rem;">Message Body Content</th>
+                      <th style="padding: 0.8rem 1rem;">Sync Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="templates-list-body">
+                    <!-- Templates render dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ================= VIEW: WHITE-LABEL / PLATFORM ADMIN ================= -->
         <div id="view-settings" class="view-pane">
           <!-- Dynamic settings or platform admin console renders here -->
@@ -392,6 +469,7 @@
   <script src="js/kanban.js"></script>
   <script src="js/db.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/templates.js"></script>
   <script src="js/app.js"></script>
   <script src="js/particles.js"></script>
 </body>
