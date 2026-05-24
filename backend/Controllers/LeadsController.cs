@@ -72,17 +72,19 @@ namespace ChatFlowCrm.Controllers
             }
 
             var leads = await query
-                .OrderByDescending(l => l.Id)
+                .OrderByDescending(l => l.Timestamp)
                 .Select(l => new
                 {
                     l.Id,
                     l.Status,
                     l.AssignedTo,
+                    l.Timestamp,
                     contact = l.Contact != null ? new
                     {
                         l.Contact.Id,
                         l.Contact.Name,
-                        l.Contact.Phone
+                        l.Contact.Phone,
+                        l.Contact.Email
                     } : null
                 })
                 .ToListAsync();

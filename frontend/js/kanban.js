@@ -160,5 +160,271 @@ const Kanban = {
                 App.switchView('chats', chatNavBtn);
             }
         }
+    },
+
+    downloadReport(format) {
+        if (!db.Leads || db.Leads.length === 0) {
+            triggerToast("No Data", "There are no leads in the pipeline to report.");
+            return;
+        }
+
+        const currentUser = Auth.getUser();
+        let visibleLeads = [...db.Leads];
+        
+        // Respect Agent boundaries in report too!
+        if (currentUser && currentUser.role === UserRoles.Agent) {
+            visibleLeads = visibleLeads.filter(l => {
+                const assignedTo = l.AssignedTo || l.assignedTo;
+                return !assignedTo || assignedTo === currentUser.id;
+            });
+        }
+
+        if (format === 'csv') {
+            this.downloadCSV(visibleLeads);
+        } else if (format === 'pdf') {
+            this.downloadPDF(visibleLeads);
+        }
+    },
+
+    downloadCSV(leads) {
+        let csv = 'Lead ID,Customer Name,Email Address,Phone Number,Created Date/Time (Local),Pipeline Stage,Assigned Agent ID\r\n';
+        
+        leads.forEach(lead => {
+            const leadId = lead.Id || lead.id;
+            const contactId = lead.ContactId || lead.contactId;
+            const contact = lead.contact || db.Contacts.find(c => c.Id === contactId || c.id === contactId);
+            const name = contact ? contact.Name || contact.name : "Unknown Lead";
+            const email = contact ? contact.Email || contact.email || "No Email" : "No Email";
+            const phone = contact ? contact.Phone || contact.phone : "+0 000 000";
+            const timestamp = lead.Timestamp || lead.timestamp;
+            const localTime = timestamp ? new Date(timestamp).toLocaleString() : "N/A";
+            const status = lead.Status || lead.status || "New";
+            const assignedTo = lead.AssignedTo || lead.assignedTo || "Unassigned";
+
+            // Clean values of commas or quotes
+            const cleanName = name.replace(/"/g, '""');
+            const cleanEmail = email.replace(/"/g, '""');
+            const cleanPhone = phone.replace(/"/g, '""');
+            const cleanStatus = status.replace(/"/g, '""');
+
+            csv += `"${leadId}","${cleanName}","${cleanEmail}","${cleanPhone}","${localTime}","${cleanStatus}","${assignedTo}"\r\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `ChatRoom_Leads_Report_${new Date().toISOString().slice(0,10)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("Report Generated", "CSV leads report has been downloaded successfully!");
+    },
+
+    downloadPDF(leads) {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            triggerToast("Popup Blocked", "Please enable popups to download PDF reports.");
+            return;
+        }
+
+        // Calculate pipeline metrics
+        const total = leads.length;
+        const won = leads.filter(l => (l.Status || l.status || '').toLowerCase() === 'won').length;
+        const lost = leads.filter(l => (l.Status || l.status || '').toLowerCase() === 'lost').length;
+        const contacted = leads.filter(l => {
+            const s = (l.Status || l.status || '').toLowerCase();
+            return s !== 'new';
+        }).length;
+        const active = total - won - lost;
+
+        const tableRows = leads.map((lead, index) => {
+            const contactId = lead.ContactId || lead.contactId;
+            const contact = lead.contact || db.Contacts.find(c => c.Id === contactId || c.id === contactId);
+            const name = contact ? contact.Name || contact.name : "Unknown Lead";
+            const email = contact ? contact.Email || contact.email || "—" : "—";
+            const phone = contact ? contact.Phone || contact.phone : "+0 000 000";
+            const timestamp = lead.Timestamp || lead.timestamp;
+            const localTime = timestamp ? new Date(timestamp).toLocaleString() : "N/A";
+            const status = lead.Status || lead.status || "New";
+            return `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td><strong>${name}</strong></td>
+                    <td>${email}</td>
+                    <td>${phone}</td>
+                    <td>${localTime}</td>
+                    <td><span class="badge ${status.toLowerCase()}">${status}</span></td>
+                </tr>
+            `;
+        }).join('');
+
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>ChatRoom CRM - Leads Pipeline Report</title>
+                <style>
+                    body {
+                        font-family: 'Inter', 'Segoe UI', sans-serif;
+                        color: #1e293b;
+                        margin: 40px;
+                        line-height: 1.5;
+                    }
+                    .header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-bottom: 2px solid #e2e8f0;
+                        padding-bottom: 20px;
+                        margin-bottom: 30px;
+                    }
+                    .title h1 {
+                        margin: 0;
+                        font-size: 24px;
+                        color: #0f172a;
+                    }
+                    .title p {
+                        margin: 5px 0 0 0;
+                        color: #64748b;
+                        font-size: 14px;
+                    }
+                    .meta {
+                        text-align: right;
+                        font-size: 12px;
+                        color: #64748b;
+                    }
+                    .stats-grid {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 15px;
+                        margin-bottom: 30px;
+                    }
+                    .stat-card {
+                        background: #f8fafc;
+                        border: 1px solid #e2e8f0;
+                        padding: 15px;
+                        border-radius: 8px;
+                        text-align: center;
+                    }
+                    .stat-card .label {
+                        font-size: 11px;
+                        text-transform: uppercase;
+                        color: #64748b;
+                        font-weight: 600;
+                    }
+                    .stat-card .val {
+                        font-size: 20px;
+                        font-weight: 700;
+                        color: #0f172a;
+                        margin-top: 5px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-bottom: 30px;
+                    }
+                    th, td {
+                        padding: 12px 15px;
+                        text-align: left;
+                        border-bottom: 1px solid #e2e8f0;
+                    }
+                    th {
+                        background-color: #f1f5f9;
+                        color: #475569;
+                        font-weight: 600;
+                        font-size: 12px;
+                        text-transform: uppercase;
+                    }
+                    td {
+                        font-size: 12px;
+                    }
+                    .badge {
+                        display: inline-block;
+                        padding: 3px 8px;
+                        font-size: 10px;
+                        font-weight: 600;
+                        border-radius: 12px;
+                        text-transform: uppercase;
+                    }
+                    .badge.new { background: #dbeafe; color: #1e40af; }
+                    .badge.contacted { background: #fef3c7; color: #92400e; }
+                    .badge.qualified { background: #e0f2fe; color: #0369a1; }
+                    .badge.proposal { background: #f3e8ff; color: #6b21a8; }
+                    .badge.won { background: #dcfce7; color: #166534; }
+                    .badge.lost { background: #ffe4e6; color: #9f1239; }
+                    .footer {
+                        text-align: center;
+                        font-size: 11px;
+                        color: #94a3b8;
+                        border-top: 1px solid #e2e8f0;
+                        padding-top: 20px;
+                        margin-top: 50px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="title">
+                        <h1>Leads Pipeline Report</h1>
+                        <p>ChatRoom CRM Sales Performance & Conversion Pipeline</p>
+                    </div>
+                    <div class="meta">
+                        <strong>Generated:</strong> ${new Date().toLocaleString()}<br>
+                        <strong>Timezone:</strong> ${Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local'}
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="label">Total Leads</div>
+                        <div class="val">${total}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Customers Contacted</div>
+                        <div class="val" style="color: #0369a1;">${contacted}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Deals Won</div>
+                        <div class="val" style="color: #166534;">${won}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="label">Deals Lost</div>
+                        <div class="val" style="color: #9f1239;">${lost}</div>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;">#</th>
+                            <th>Customer Name</th>
+                            <th>Email Address</th>
+                            <th>Phone Number</th>
+                            <th>Created Date/Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    This report was automatically generated by ChatRoom CRM. Confidential internal sales document. All database timestamps are processed and resolved to standard local time zone.
+                </div>
+                
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        };
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
     }
 };

@@ -157,6 +157,12 @@ using (var scope = app.Services.CreateScope())
     {
         // EF Core database migration or creation
         context.Database.EnsureCreated();
+
+        // Self-healing: Ensure Email column exists in Contacts table for reporting
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Contacts') AND name = 'Email') BEGIN ALTER TABLE Contacts ADD Email NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
+
+        // Self-healing: Ensure Timestamp column exists in Leads table for reporting
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Timestamp') BEGIN ALTER TABLE Leads ADD Timestamp DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(); END");
     }
     catch (Exception ex)
     {

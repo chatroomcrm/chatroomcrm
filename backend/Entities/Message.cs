@@ -11,7 +11,7 @@ namespace ChatFlowCrm.Entities
         public string Content { get; set; } = string.Empty;
         public string Direction { get; set; } = "Incoming"; // Incoming, Outgoing
         public string ProviderMessageId { get; set; } = string.Empty; // Twilio Message SID
-        public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+        public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow;
         
         public Guid TenantId { get; set; }
     }

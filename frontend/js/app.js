@@ -148,9 +148,9 @@ async function bootstrapApp() {
         }
         const originalHtml = btn.getAttribute('data-original-html');
         
-        // SuperAdmin can see modules except SQL Database Viewer!
+        // SuperAdmin can see modules except SQL Database Viewer & Leads Board!
         if (user.role === UserRoles.SuperAdmin) {
-            if (viewId === 'database') {
+            if (viewId === 'database' || viewId === 'kanban') {
                 btn.style.display = 'none';
             } else {
                 btn.style.display = 'flex';

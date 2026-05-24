@@ -12,6 +12,8 @@ namespace ChatFlowCrm.Entities
         public string Status { get; set; } = "New"; // New, Contacted, Qualified, Proposal, Won, Lost
         public Guid? AssignedTo { get; set; }
         
+        public DateTimeOffset Timestamp { get; set; } = DateTimeOffset.UtcNow; // Lead Creation Timestamp
+        
         public Guid TenantId { get; set; }
         public Tenant? Tenant { get; set; }
 
