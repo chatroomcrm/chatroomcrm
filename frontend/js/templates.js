@@ -3,6 +3,8 @@
    ========================================================================= */
 
 const Templates = {
+    selectedTenantId: null,
+
     initialize: async function() {
         App.logConsole("[Templates Module] Initializing templates view...");
         
@@ -22,6 +24,63 @@ const Templates = {
                 }
             });
         }
+
+        // Configure Tenant Selector dropdown visibility and data population based on role
+        const user = Auth.getUser();
+        const selectorGroup = document.getElementById('templates-tenant-selector-group');
+        const displayBadge = document.getElementById('templates-tenant-display-badge');
+        const tenantNameLbl = document.getElementById('templates-tenant-name-lbl');
+        
+        if (user && user.role === 'SuperAdmin') {
+            if (selectorGroup) selectorGroup.style.display = 'flex';
+            if (displayBadge) displayBadge.style.display = 'none';
+            await this.populateTenantDropdown();
+        } else {
+            if (selectorGroup) selectorGroup.style.display = 'none';
+            if (displayBadge) {
+                displayBadge.style.display = 'flex';
+                if (tenantNameLbl && user) {
+                    tenantNameLbl.innerText = user.tenantName || "My Organization";
+                }
+            }
+            this.selectedTenantId = null;
+        }
+    },
+
+    populateTenantDropdown: async function() {
+        const select = document.getElementById('templates-tenant-select');
+        if (!select) return;
+
+        try {
+            App.logConsole("[API Request] GET /api/superadmin/tenants...");
+            const res = await Auth.apiFetch('/api/superadmin/tenants');
+            if (res.ok) {
+                const tenants = await res.json();
+                
+                if (tenants.length > 0) {
+                    select.innerHTML = tenants.map(t => 
+                        `<option value="${t.id}">${t.name}</option>`
+                    ).join('');
+                    
+                    // Set active tenant ID to the first tenant by default
+                    this.selectedTenantId = select.value;
+                } else {
+                    select.innerHTML = '<option value="">No Tenants Found</option>';
+                    this.selectedTenantId = null;
+                }
+            } else {
+                select.innerHTML = '<option value="">Error loading tenants</option>';
+            }
+        } catch (e) {
+            App.logConsole(`[Tenant Load Error] Failed: ${e.message}`);
+            select.innerHTML = '<option value="">Connection error</option>';
+        }
+    },
+
+    handleTenantChange: function(tenantId) {
+        this.selectedTenantId = tenantId;
+        App.logConsole(`[Templates Module] Active tenant changed to: ${tenantId}`);
+        this.loadTemplatesList();
     },
 
     loadTemplatesList: async function() {
@@ -37,8 +96,9 @@ const Templates = {
         `;
 
         try {
-            App.logConsole("[API Request] GET /api/templates...");
-            const res = await Auth.apiFetch('/api/templates');
+            const queryParam = this.selectedTenantId ? `?tenantId=${this.selectedTenantId}` : '';
+            App.logConsole(`[API Request] GET /api/templates${queryParam}...`);
+            const res = await Auth.apiFetch(`/api/templates${queryParam}`);
             if (res.ok) {
                 const list = await res.json();
                 this.renderTemplatesTable(list);
@@ -78,7 +138,6 @@ const Templates = {
         }
 
         tableBody.innerHTML = list.map((item, idx) => {
-            const dateStr = item.timestamp ? new Date(item.timestamp).toLocaleString() : 'N/A';
             const statusClass = item.status === 'Approved' ? 'badge-emerald' : 'badge-amber';
             
             return `
@@ -128,15 +187,13 @@ const Templates = {
         formData.append('file', file);
 
         try {
-            App.logConsole("[API Request] POST /api/templates/upload (multipart/form-data)...");
+            const queryParam = this.selectedTenantId ? `?tenantId=${this.selectedTenantId}` : '';
+            App.logConsole(`[API Request] POST /api/templates/upload${queryParam} (multipart/form-data)...`);
             
-            // Build direct fetch with JWT auth header (Auth.apiFetch doesn't do multipart/form-data natively cleanly)
-            const token = localStorage.getItem('token');
-            const origin = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
-                ? 'https://localhost:64723'
-                : window.location.origin;
+            const token = Auth.getToken();
+            const apiUrl = Auth.getApiUrl();
 
-            const res = await fetch(`${origin}/api/templates/upload`, {
+            const res = await fetch(`${apiUrl}/api/templates/upload${queryParam}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`

@@ -33,8 +33,14 @@ namespace ChatFlowCrm.Controllers
             _logger = logger;
         }
 
-        private Guid ResolveTenantId()
+        private Guid ResolveTenantId(Guid? queryTenantId = null)
         {
+            var userRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+            if (userRole == UserRoles.SuperAdmin && queryTenantId.HasValue)
+            {
+                return queryTenantId.Value;
+            }
+
             var claim = User.FindFirst("TenantId")?.Value;
             if (Guid.TryParse(claim, out var tenantId))
             {
@@ -45,11 +51,11 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetTemplates()
+        public async Task<IActionResult> GetTemplates([FromQuery] Guid? tenantId)
         {
-            var tenantId = ResolveTenantId();
+            var finalTenantId = ResolveTenantId(tenantId);
             var templates = await _context.TenantTemplates
-                .Where(t => t.TenantId == tenantId)
+                .Where(t => t.TenantId == finalTenantId)
                 .OrderByDescending(t => t.Timestamp)
                 .ToListAsync();
 
@@ -57,14 +63,15 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadTemplatesCsv(IFormFile file)
+        public async Task<IActionResult> UploadTemplatesCsv(IFormFile file, [FromQuery] Guid? tenantId)
         {
             if (file == null || file.Length == 0)
             {
                 return BadRequest("Please upload a valid CSV template file.");
             }
 
-            var tenantId = ResolveTenantId();
+            var resolvedTenantId = ResolveTenantId(tenantId);
+            tenantId = resolvedTenantId; // Re-assign resolved value for downstream logic
             var tenant = await _context.Tenants.FindAsync(tenantId);
             if (tenant == null)
             {
