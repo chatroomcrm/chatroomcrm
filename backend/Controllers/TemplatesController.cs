@@ -118,7 +118,7 @@ namespace ChatFlowCrm.Controllers
                     }
 
                     // 1. Programmatically upload to Meta Cloud API first if credentials are active
-                    string status = "Approved"; // Local simulation status
+                    string status = "Approved"; // Local simulation status fallback
 
                     if (!string.IsNullOrEmpty(tenant.MetaAccessToken) && 
                         !string.IsNullOrEmpty(tenant.MetaBusinessAccountId) && 
@@ -126,7 +126,7 @@ namespace ChatFlowCrm.Controllers
                     {
                         try
                         {
-                            var metaSuccess = await CreateTemplateOnMetaAsync(
+                            var metaStatus = await CreateTemplateOnMetaAsync(
                                 tenant.MetaBusinessAccountId, 
                                 tenant.MetaAccessToken, 
                                 name, 
@@ -134,15 +134,15 @@ namespace ChatFlowCrm.Controllers
                                 language, 
                                 body
                             );
-                            if (metaSuccess)
+                            if (metaStatus != null)
                             {
-                                status = "Approved";
-                                await _logger.LogInfoAsync($"Successfully registered message template '{name}' programmatically on Meta WhatsApp API.", "TemplatesController.Upload", finalTenantId);
+                                status = metaStatus; // Use actual status returned by Meta (Approved, Pending, or Rejected)
+                                await _logger.LogInfoAsync($"Successfully registered message template '{name}' on Meta WhatsApp API. Status: {status}", "TemplatesController.Upload", finalTenantId);
                             }
                             else
                             {
-                                status = "Pending"; // Meta API failed, keep as Pending review
-                                await _logger.LogWarningAsync($"Meta API rejected template creation for '{name}'. Saved locally as Pending.", "TemplatesController.Upload", finalTenantId);
+                                status = "Rejected"; // Meta API explicitly rejected the structure
+                                await _logger.LogWarningAsync($"Meta API rejected template creation for '{name}'. Saved locally as Rejected.", "TemplatesController.Upload", finalTenantId);
                             }
                         }
                         catch (Exception ex)
@@ -153,6 +153,7 @@ namespace ChatFlowCrm.Controllers
                     }
                     else
                     {
+                        status = "Simulated"; // Visual indicator showing credentials are not configured
                         await _logger.LogInfoAsync($"Meta Business credentials missing for Tenant. Template '{name}' saved locally for sandbox offline simulation.", "TemplatesController.Upload", finalTenantId);
                     }
 
@@ -205,7 +206,7 @@ namespace ChatFlowCrm.Controllers
             });
         }
 
-        private async Task<bool> CreateTemplateOnMetaAsync(string wabaId, string accessToken, string name, string category, string language, string body)
+        private async Task<string?> CreateTemplateOnMetaAsync(string wabaId, string accessToken, string name, string category, string language, string body)
         {
             var url = $"https://graph.facebook.com/v20.0/{wabaId}/message_templates";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
@@ -233,12 +234,27 @@ namespace ChatFlowCrm.Controllers
             var response = await _httpClient.SendAsync(request);
             if (response.IsSuccessStatusCode)
             {
-                return true;
+                var content = await response.Content.ReadAsStringAsync();
+                try
+                {
+                    using var doc = JsonDocument.Parse(content);
+                    if (doc.RootElement.TryGetProperty("status", out var statusProp))
+                    {
+                        string metaStatus = statusProp.GetString() ?? "APPROVED";
+                        // Standardize string casing to match frontend expected values
+                        if (metaStatus.Equals("APPROVED", StringComparison.OrdinalIgnoreCase)) return "Approved";
+                        if (metaStatus.Equals("PENDING", StringComparison.OrdinalIgnoreCase)) return "Pending";
+                        if (metaStatus.Equals("REJECTED", StringComparison.OrdinalIgnoreCase)) return "Rejected";
+                        return metaStatus;
+                    }
+                }
+                catch {}
+                return "Approved";
             }
 
             var err = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"[META TEMPLATE CREATION ERROR] Code: {response.StatusCode}. Details: {err}");
-            return false;
+            return null; // Indicates API failure
         }
 
         private List<string> ParseCsvLine(string line)

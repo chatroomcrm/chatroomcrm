@@ -138,7 +138,10 @@ const Templates = {
         }
 
         tableBody.innerHTML = list.map((item, idx) => {
-            const statusClass = item.status === 'Approved' ? 'badge-emerald' : 'badge-amber';
+            let statusClass = 'badge-amber';
+            if (item.status === 'Approved') statusClass = 'badge-emerald';
+            else if (item.status === 'Rejected') statusClass = 'badge-rose';
+            else if (item.status === 'Simulated') statusClass = 'badge-violet';
             
             return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.02); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.01)'" onmouseout="this.style.background='transparent'">
