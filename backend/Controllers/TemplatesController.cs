@@ -257,6 +257,11 @@ namespace ChatFlowCrm.Controllers
 
             var err = await response.Content.ReadAsStringAsync();
             Console.WriteLine($"[META TEMPLATE CREATION ERROR] Code: {response.StatusCode}. Details: {err}");
+            try
+            {
+                await _logger.LogWarningAsync($"Meta template creation failed for '{name}' (HTTP {response.StatusCode}). Raw Response: {err}", "TemplatesController.CreateTemplateOnMetaAsync");
+            }
+            catch {}
             return null; // Indicates API failure
         }
 
