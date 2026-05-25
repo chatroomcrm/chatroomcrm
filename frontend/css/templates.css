@@ -2,6 +2,13 @@
    CHATFLOW WHATSAPP CRM - MESSAGE TEMPLATES RESPONSIVE STYLES (templates.css)
    ========================================================================= */
 
+#view-templates.view-pane.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .templates-header-bar {
   margin-bottom: 1.5rem;
   background: rgba(255,255,255,0.02);
