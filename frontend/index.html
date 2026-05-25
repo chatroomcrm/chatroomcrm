@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="css/kanban.css">
   <link rel="stylesheet" href="css/db-inspector.css">
   <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/templates.css">
 </head>
 <body>
 
@@ -371,7 +372,7 @@
 
         <!-- ================= VIEW: MESSAGE TEMPLATES ================= -->
         <div id="view-templates" class="view-pane" style="height: 100%; display: flex; flex-direction: column; overflow: hidden;">
-          <div class="kanban-header-bar" style="margin-bottom: 1.5rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 1rem 1.5rem; border-radius: 12px; backdrop-filter: blur(10px); flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;">
+          <div class="templates-header-bar">
             <div>
               <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; color: var(--text-main); margin: 0;">WhatsApp Message Templates</h2>
               <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Upload your spreadsheet templates to automatically register them in Meta and save them in the CRM database.</p>
@@ -392,9 +393,9 @@
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; align-items: stretch; flex: 1; min-height: 0; overflow: hidden; padding-bottom: 1rem;">
+          <div class="templates-layout-grid">
             <!-- Left Panel: Upload Actions & Guides -->
-            <div style="display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; flex-shrink: 1; min-height: 0; padding-right: 4px;">
+            <div class="templates-sidebar">
               <!-- Upload Card -->
               <div class="metric-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 12px; text-align: left; flex-shrink: 0;">
                 <h4 style="margin: 0 0 0.75rem 0; font-family: var(--font-display); color: var(--text-main); font-size: 0.95rem; font-weight: 600;">Bulk CSV Uploader 📤</h4>
@@ -434,12 +435,12 @@
             </div>
 
             <!-- Right Panel: Grid table -->
-            <div class="metric-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); border-radius: 12px; padding: 0; overflow: hidden; height: 100%; display: flex; flex-direction: column;">
+            <div class="metric-card templates-inventory-card">
               <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;">
                 <h3 style="margin: 0; font-family: var(--font-display); color: var(--text-main); font-size: 0.95rem; font-weight: 600;">Templates Inventory</h3>
                 <span style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase;">Sync Status</span>
               </div>
-              <div style="overflow-y: auto; overflow-x: auto; flex: 1; min-height: 0;">
+              <div class="templates-table-wrapper">
                 <table style="width: 100%; border-collapse: collapse; text-align: left;">
                   <thead>
                     <tr style="background: #0d1527; border-bottom: 1px solid var(--border-color); font-size: 0.7rem; font-family: var(--font-mono); text-transform: uppercase; color: var(--text-muted); position: sticky; top: 0; z-index: 10;">

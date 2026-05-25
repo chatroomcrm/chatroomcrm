@@ -209,3 +209,94 @@ body {
   from { transform: translateX(120%); }
   to { transform: translateX(0); }
 }
+
+/* =========================================================================
+   RESPONSIVE SAAS HEADER NAVIGATION FOR MOBILE/TABLET
+   ========================================================================= */
+@media (max-width: 1024px) {
+  .saas-container {
+    grid-template-rows: auto 1fr;
+  }
+  
+  .saas-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    height: auto;
+  }
+  
+  .header-logo {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+  }
+  
+  /* Target session control wrapper */
+  .saas-header > div:last-of-type {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+    align-self: center;
+  }
+  
+  .saas-nav {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    overflow-x: auto;
+    scrollbar-width: none; /* Firefox */
+    display: flex;
+    flex-wrap: nowrap;
+    padding-bottom: 4px;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    margin-top: 0.25rem;
+    gap: 0.25rem;
+  }
+  
+  .saas-nav::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+  
+  .nav-btn {
+    flex-shrink: 0;
+    padding: 0.45rem 0.8rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .saas-header {
+    gap: 0.5rem;
+    padding: 0.65rem 0.75rem;
+  }
+  
+  .header-logo .logo-icon {
+    width: 30px;
+    height: 30px;
+    font-size: 0.95rem;
+  }
+  
+  .header-logo h1 {
+    font-size: 1.05rem;
+  }
+  
+  /* Compress user profile badge to save critical mobile horizontal space */
+  #user-profile-badge {
+    padding: 0.25rem 0.5rem !important;
+    gap: 0.35rem !important;
+  }
+  
+  #user-profile-badge #user-avatar {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 0.6rem !important;
+  }
+  
+  #user-profile-badge div:last-child {
+    display: none !important; /* Hide name/role labels on tiny screens */
+  }
+}
+
