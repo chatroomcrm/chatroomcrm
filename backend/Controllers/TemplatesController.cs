@@ -217,7 +217,10 @@ namespace ChatFlowCrm.Controllers
             {
                 name = name,
                 category = category,
-                language = language,
+                language = new
+                {
+                    code = language
+                },
                 components = new[]
                 {
                     new
