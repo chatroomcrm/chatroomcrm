@@ -23,6 +23,7 @@ const Settings = {
             } else if (currentUser.role === UserRoles.TenantAdmin) {
                 await this.loadTeamRegistry();
                 await this.loadCurrentBranding();
+                await this.loadCurrentMessaging();
             }
         }
 
@@ -278,8 +279,80 @@ const Settings = {
                             </table>
                         </div>
                     </div>
+
+                    <!-- Unified WhatsApp Channel Configuration Panel -->
+                    <div class="settings-card" style="display:flex; flex-direction:column; gap:1.25rem; grid-column: span 2;">
+                        <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; border-left: 3px solid var(--theme-glow); padding-left: 0.5rem; margin:0; display:flex; align-items:center; gap:0.5rem;">
+                            💬 WhatsApp Channel Configuration
+                        </h3>
+                        <p style="color:var(--text-muted); font-size:0.75rem; margin:0;">
+                            Configure your custom messaging channel dynamically. Select your preferred provider (Twilio or Meta Cloud API), fill in the shared credentials, and all incoming/outgoing logs will route through this tenant space automatically.
+                        </p>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 0.5rem;">
+                            <div class="form-group">
+                                <label for="settings-msg-provider" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                                    Active Messaging Provider
+                                </label>
+                                <select id="settings-msg-provider" class="login-input" onchange="Settings.onMessagingProviderChange(this.value)" style="background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); margin-top: 0.3rem;">
+                                    <option value="None">None / Disabled (Simulated Sandbox)</option>
+                                    <option value="Twilio">Twilio WhatsApp Service</option>
+                                    <option value="Meta">Meta Cloud API (WhatsApp Business)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="settings-msg-number" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                                    Customer-Facing WhatsApp Number
+                                </label>
+                                <input type="text" id="settings-msg-number" class="login-input" placeholder="e.g. +918143712528" style="margin-top: 0.3rem;">
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Twilio configuration block -->
+                        <div id="settings-twilio-section" style="display:none; flex-direction:column; gap:1.25rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
+                            <h4 style="margin: 0; font-size: 0.8rem; color: var(--theme-glow); font-family: var(--font-display); font-weight: 600;">🔑 Twilio Credentials Configuration</h4>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
+                                <div class="form-group">
+                                    <label for="settings-twilio-sid" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Account SID</label>
+                                    <input type="text" id="settings-twilio-sid" class="login-input" placeholder="Enter Twilio Account SID (e.g. AC...)" style="margin-top:0.3rem;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="settings-twilio-token" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Auth Token</label>
+                                    <input type="password" id="settings-twilio-token" class="login-input" placeholder="Enter Twilio Auth Token" style="margin-top:0.3rem;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dynamic Meta configuration block -->
+                        <div id="settings-meta-section" style="display:none; flex-direction:column; gap:1.25rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
+                            <h4 style="margin: 0; font-size: 0.8rem; color: var(--theme-glow); font-family: var(--font-display); font-weight: 600;">🔑 Meta Cloud API Credentials Configuration</h4>
+                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; row-gap: 1rem;">
+                                <div class="form-group">
+                                    <label for="settings-meta-waba-id" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">WhatsApp Business Account ID (WABA ID)</label>
+                                    <input type="text" id="settings-meta-waba-id" class="login-input" placeholder="Enter Meta WABA ID" style="margin-top:0.3rem;">
+                                </div>
+                                <div class="form-group">
+                                    <label for="settings-meta-phone-id" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number ID</label>
+                                    <input type="text" id="settings-meta-phone-id" class="login-input" placeholder="Enter Meta Phone Number ID" style="margin-top:0.3rem;">
+                                </div>
+                                <div class="form-group" style="grid-column: span 2;">
+                                    <label for="settings-meta-token" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Meta Access Token (System User Permanent Token)</label>
+                                    <textarea id="settings-meta-token" class="login-input" rows="2" placeholder="Enter Permanent Meta Access Token" style="margin-top:0.3rem; height: auto; resize: vertical; font-family:var(--font-mono); font-size:0.7rem; padding: 0.5rem;"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
+                            <button onclick="Settings.saveMessagingSettings()" class="login-submit-btn" style="width: auto; padding: 0.5rem 1.5rem; font-size: 0.75rem; margin:0;">
+                                Save Messaging Config 💾
+                            </button>
+                            <span id="messaging-settings-status" style="color:var(--text-muted); font-size:0.7rem;"></span>
+                        </div>
+                    </div>
                 </div>
             `;
+        }
         }
     },
 
@@ -1244,6 +1317,139 @@ const Settings = {
         } catch (err) {
             triggerToast("Save Error", err.message);
             logConsole(`[Branding API Error] saveBrandingSettings failed: ${err.message}`);
+        }
+    },
+
+    onMessagingProviderChange(provider) {
+        const twilioSection = document.getElementById('settings-twilio-section');
+        const metaSection = document.getElementById('settings-meta-section');
+        
+        if (twilioSection && metaSection) {
+            if (provider === 'Twilio') {
+                twilioSection.style.display = 'flex';
+                metaSection.style.display = 'none';
+            } else if (provider === 'Meta') {
+                twilioSection.style.display = 'none';
+                metaSection.style.display = 'flex';
+            } else {
+                twilioSection.style.display = 'none';
+                metaSection.style.display = 'none';
+            }
+        }
+    },
+
+    async loadCurrentMessaging() {
+        try {
+            logConsole(`[API Request] GET /api/auth/messaging...`);
+            const res = await Auth.apiFetch('/api/auth/messaging');
+            if (res.ok) {
+                const config = await res.json();
+                
+                const providerSelect = document.getElementById('settings-msg-provider');
+                const numberInput = document.getElementById('settings-msg-number');
+                const twilioSid = document.getElementById('settings-twilio-sid');
+                const twilioToken = document.getElementById('settings-twilio-token');
+                const metaWabaId = document.getElementById('settings-meta-waba-id');
+                const metaPhoneId = document.getElementById('settings-meta-phone-id');
+                const metaToken = document.getElementById('settings-meta-token');
+
+                if (providerSelect) {
+                    providerSelect.value = config.messagingProvider || 'None';
+                    this.onMessagingProviderChange(config.messagingProvider || 'None');
+                }
+                if (numberInput) numberInput.value = config.whatsAppNumber || '';
+                
+                if (config.messagingProvider === 'Twilio') {
+                    if (twilioSid) twilioSid.value = config.providerAccountId || '';
+                    if (twilioToken) twilioToken.value = config.providerApiKey || '';
+                } else if (config.messagingProvider === 'Meta') {
+                    if (metaWabaId) metaWabaId.value = config.providerAccountId || '';
+                    if (metaPhoneId) metaPhoneId.value = config.providerSenderId || '';
+                    if (metaToken) metaToken.value = config.providerApiKey || '';
+                }
+            }
+        } catch (err) {
+            logConsole(`[Messaging API Error] Failed to load messaging settings: ${err.message}`);
+        }
+    },
+
+    async saveMessagingSettings() {
+        const providerSelect = document.getElementById('settings-msg-provider');
+        const numberInput = document.getElementById('settings-msg-number');
+        if (!providerSelect || !numberInput) return;
+
+        const provider = providerSelect.value;
+        const whatsAppNumber = numberInput.value.trim();
+
+        const statusLabel = document.getElementById('messaging-settings-status');
+        if (statusLabel) {
+            statusLabel.innerText = 'Saving...';
+            statusLabel.style.color = 'var(--text-muted)';
+        }
+
+        const payload = {
+            messagingProvider: provider === 'None' ? null : provider,
+            whatsAppNumber: whatsAppNumber
+        };
+
+        if (provider === 'Twilio') {
+            const twilioSid = document.getElementById('settings-twilio-sid').value.trim();
+            const twilioToken = document.getElementById('settings-twilio-token').value.trim();
+            
+            if (!twilioSid || !twilioToken) {
+                triggerToast("Validation Error", "Twilio Account SID and Auth Token are required when Twilio is active.");
+                if (statusLabel) statusLabel.innerText = '';
+                return;
+            }
+            payload.providerAccountId = twilioSid;
+            payload.providerApiKey = twilioToken;
+        } else if (provider === 'Meta') {
+            const metaWabaId = document.getElementById('settings-meta-waba-id').value.trim();
+            const metaPhoneId = document.getElementById('settings-meta-phone-id').value.trim();
+            const metaToken = document.getElementById('settings-meta-token').value.trim();
+
+            if (!metaWabaId || !metaPhoneId || !metaToken) {
+                triggerToast("Validation Error", "Meta WABA ID, Phone Number ID, and Access Token are required when Meta Cloud API is active.");
+                if (statusLabel) statusLabel.innerText = '';
+                return;
+            }
+            payload.providerAccountId = metaWabaId;
+            payload.providerSenderId = metaPhoneId;
+            payload.providerApiKey = metaToken;
+        }
+
+        try {
+            logConsole(`[API Request] PUT /api/auth/messaging...`);
+            const res = await Auth.apiFetch('/api/auth/messaging', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                triggerToast("Settings Saved", "Unified WhatsApp Channel configuration saved successfully.");
+                if (statusLabel) {
+                    statusLabel.innerText = 'Saved 💾';
+                    statusLabel.style.color = 'var(--accent-emerald)';
+                }
+                
+                // Reload session dynamically
+                await this.loadCurrentMessaging();
+            } else {
+                const errData = await res.json();
+                triggerToast("Save Error", errData.message || "Failed to save messaging configurations.");
+                if (statusLabel) {
+                    statusLabel.innerText = 'Error ❌';
+                    statusLabel.style.color = 'var(--accent-rose)';
+                }
+            }
+        } catch (err) {
+            triggerToast("Save Error", err.message);
+            logConsole(`[Messaging API Error] saveMessagingSettings failed: ${err.message}`);
+            if (statusLabel) {
+                statusLabel.innerText = 'Connection Error ❌';
+                statusLabel.style.color = 'var(--accent-rose)';
+            }
         }
     },
 

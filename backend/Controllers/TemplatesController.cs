@@ -161,17 +161,19 @@ namespace ChatFlowCrm.Controllers
                     }
                     else
                     {
-                        var globalToken = _configuration["Meta:AccessToken"];
-                        if (!string.IsNullOrEmpty(globalToken) && 
-                            !string.IsNullOrEmpty(tenant.MetaBusinessAccountId) && 
-                            tenant.MetaBusinessAccountId != "PLACEHOLDER")
+                        var providerToken = !string.IsNullOrEmpty(tenant.ProviderApiKey) ? tenant.ProviderApiKey : _configuration["Meta:AccessToken"];
+                        var wabaId = tenant.ProviderAccountId;
+
+                        if (!string.IsNullOrEmpty(providerToken) && 
+                            !string.IsNullOrEmpty(wabaId) && 
+                            wabaId != "PLACEHOLDER")
                         {
                             try
                             {
                                 var metaStatus = await CreateTemplateOnMetaAsync(
                                     finalTenantId,
-                                    tenant.MetaBusinessAccountId, 
-                                    globalToken, 
+                                    wabaId, 
+                                    providerToken, 
                                     name, 
                                     category, 
                                     language, 

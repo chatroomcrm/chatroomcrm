@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ChatFlowCrm.Data;
 
 namespace ChatFlowCrm.Services
 {
@@ -20,13 +21,15 @@ namespace ChatFlowCrm.Services
         private readonly ILogger<TwilioWhatsAppService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IDbLoggerService _dbLogger;
+        private readonly AppDbContext _context;
 
-        public TwilioWhatsAppService(HttpClient httpClient, ILogger<TwilioWhatsAppService> logger, IConfiguration configuration, IDbLoggerService dbLogger)
+        public TwilioWhatsAppService(HttpClient httpClient, ILogger<TwilioWhatsAppService> logger, IConfiguration configuration, IDbLoggerService dbLogger, AppDbContext context)
         {
             _httpClient = httpClient;
             _logger = logger;
             _configuration = configuration;
             _dbLogger = dbLogger;
+            _context = context;
         }
 
         public async Task<bool> SendWhatsAppMessageAsync(string toPhone, string content, Guid? tenantId)
@@ -36,6 +39,21 @@ namespace ChatFlowCrm.Services
                 var accountSid = _configuration["Twilio:AccountSid"];
                 var authToken = _configuration["Twilio:AuthToken"];
                 var fromWhatsAppNumber = _configuration["Twilio:FromWhatsAppNumber"] ?? "whatsapp:+14155238886";
+
+                // Overwrite dynamically from Tenant database configurations if present
+                if (tenantId.HasValue)
+                {
+                    var tenant = await _context.Tenants.FindAsync(tenantId.Value);
+                    if (tenant != null && tenant.MessagingProvider == "Twilio")
+                    {
+                        if (!string.IsNullOrEmpty(tenant.ProviderAccountId))
+                            accountSid = tenant.ProviderAccountId;
+                        if (!string.IsNullOrEmpty(tenant.ProviderApiKey))
+                            authToken = tenant.ProviderApiKey;
+                        if (!string.IsNullOrEmpty(tenant.WhatsAppNumber))
+                            fromWhatsAppNumber = tenant.WhatsAppNumber.StartsWith("whatsapp:") ? tenant.WhatsAppNumber : $"whatsapp:{tenant.WhatsAppNumber}";
+                    }
+                }
 
                 if (string.IsNullOrEmpty(accountSid) || string.IsNullOrEmpty(authToken))
                 {

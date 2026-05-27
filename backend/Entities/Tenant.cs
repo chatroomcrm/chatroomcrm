@@ -11,9 +11,13 @@ namespace ChatFlowCrm.Entities
         public string ThemeColor { get; set; } = "#00f2fe|#4facfe"; // Default brand gradient
         public bool IsBlocked { get; set; } = false;
 
-        public string WhatsAppNumber { get; set; } = string.Empty;
-        public string MetaPhoneNumberId { get; set; } = string.Empty;
-        public string MetaBusinessAccountId { get; set; } = string.Empty;
+        // Unified Dynamic Messaging Architecture
+        public string? MessagingProvider { get; set; } // "Twilio", "Meta", or NULL
+        public string WhatsAppNumber { get; set; } = string.Empty; // Shared display number (e.g. "+918143712528")
+        
+        public string? ProviderAccountId { get; set; } // Twilio AccountSid OR Meta WABA ID
+        public string? ProviderApiKey { get; set; }    // Twilio AuthToken OR Meta AccessToken
+        public string? ProviderSenderId { get; set; }  // Meta PhoneNumberId (NULL for Twilio)
 
         // Navigation properties
         public ICollection<User> Users { get; set; } = new List<User>();

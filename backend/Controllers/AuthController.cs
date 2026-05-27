@@ -342,6 +342,95 @@ namespace ChatFlowCrm.Controllers
             });
         }
 
+        public class UpdateMessagingRequest
+        {
+            public string? MessagingProvider { get; set; }
+            public string WhatsAppNumber { get; set; } = string.Empty;
+            public string? ProviderAccountId { get; set; }
+            public string? ProviderApiKey { get; set; }
+            public string? ProviderSenderId { get; set; }
+        }
+
+        [Authorize(Roles = "TenantAdmin")]
+        [HttpGet("messaging")]
+        public async Task<IActionResult> GetMessaging()
+        {
+            var callerIdStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(callerIdStr) || !Guid.TryParse(callerIdStr, out var callerId))
+            {
+                return Unauthorized(new { message = "Invalid authentication claims." });
+            }
+
+            var caller = await _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Id == callerId);
+            if (caller == null)
+            {
+                return Unauthorized(new { message = "User not found." });
+            }
+
+            if (caller.Tenant == null)
+            {
+                return BadRequest(new { message = "Only users assigned to a tenant organization can read messaging settings." });
+            }
+
+            return Ok(new
+            {
+                messagingProvider = caller.Tenant.MessagingProvider,
+                whatsAppNumber = caller.Tenant.WhatsAppNumber,
+                providerAccountId = caller.Tenant.ProviderAccountId,
+                providerApiKey = caller.Tenant.ProviderApiKey,
+                providerSenderId = caller.Tenant.ProviderSenderId
+            });
+        }
+
+        [Authorize(Roles = "TenantAdmin")]
+        [HttpPut("messaging")]
+        public async Task<IActionResult> UpdateMessaging([FromBody] UpdateMessagingRequest request)
+        {
+            var callerIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(callerIdStr) || !Guid.TryParse(callerIdStr, out var callerId))
+            {
+                return Unauthorized(new { message = "Invalid authentication claims." });
+            }
+
+            var caller = await _context.Users.Include(u => u.Tenant).FirstOrDefaultAsync(u => u.Id == callerId);
+            if (caller == null)
+            {
+                return Unauthorized(new { message = "User not found." });
+            }
+
+            if (caller.Tenant == null)
+            {
+                return BadRequest(new { message = "Only users assigned to a tenant organization can configure messaging settings." });
+            }
+
+            var formattedWhatsApp = request.WhatsAppNumber.Trim();
+            if (!string.IsNullOrEmpty(formattedWhatsApp))
+            {
+                formattedWhatsApp = formattedWhatsApp.Replace("whatsapp:", "").Replace(" ", "").Trim();
+            }
+
+            caller.Tenant.MessagingProvider = request.MessagingProvider;
+            caller.Tenant.WhatsAppNumber = formattedWhatsApp;
+            caller.Tenant.ProviderAccountId = string.IsNullOrEmpty(request.ProviderAccountId) ? null : request.ProviderAccountId.Trim();
+            caller.Tenant.ProviderApiKey = string.IsNullOrEmpty(request.ProviderApiKey) ? null : request.ProviderApiKey.Trim();
+            caller.Tenant.ProviderSenderId = string.IsNullOrEmpty(request.ProviderSenderId) ? null : request.ProviderSenderId.Trim();
+
+            _context.Tenants.Update(caller.Tenant);
+            await _context.SaveChangesAsync();
+
+            await _logger.LogInfoAsync($"Tenant messaging settings updated by {caller.Role} ({caller.Email}): Provider={caller.Tenant.MessagingProvider}, WhatsApp={caller.Tenant.WhatsAppNumber}", "AuthController.UpdateMessaging", caller.TenantId);
+
+            return Ok(new
+            {
+                message = "Messaging settings saved successfully.",
+                messagingProvider = caller.Tenant.MessagingProvider,
+                whatsAppNumber = caller.Tenant.WhatsAppNumber,
+                providerAccountId = caller.Tenant.ProviderAccountId,
+                providerApiKey = caller.Tenant.ProviderApiKey,
+                providerSenderId = caller.Tenant.ProviderSenderId
+            });
+        }
+
         public class UpdateUserRequest
         {
             public string Name { get; set; } = string.Empty;
@@ -431,16 +520,30 @@ namespace ChatFlowCrm.Controllers
             var jwtKey = _configuration["Jwt:Key"] ?? "SUPER_SECRET_CHATFLOW_SECURITY_KEY_2026";
             var key = Encoding.ASCII.GetBytes(jwtKey);
 
+            // Fetch tenant dynamically to load active unified configurations into the cryptographically signed session
+            Tenant? tenant = null;
+            if (user.TenantId.HasValue)
+            {
+                tenant = _context.Tenants.Find(user.TenantId.Value);
+            }
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role),
+                new Claim("TenantId", user.TenantId?.ToString() ?? ""),
+                new Claim("MessagingProvider", tenant?.MessagingProvider ?? ""),
+                new Claim("TenantWhatsApp", tenant?.WhatsAppNumber ?? ""),
+                new Claim("ProviderAccountId", tenant?.ProviderAccountId ?? ""),
+                new Claim("ProviderApiKey", tenant?.ProviderApiKey ?? ""),
+                new Claim("ProviderSenderId", tenant?.ProviderSenderId ?? "")
+            };
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Name),
-                    new Claim(ClaimTypes.Email, user.Email),
-                    new Claim(ClaimTypes.Role, user.Role),
-                    new Claim("TenantId", user.TenantId?.ToString() ?? "")
-                }),
+                Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddDays(7),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                 Issuer = _configuration["Jwt:Issuer"] ?? "ChatFlowCrm",

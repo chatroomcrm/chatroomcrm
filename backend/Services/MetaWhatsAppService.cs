@@ -41,10 +41,17 @@ namespace ChatFlowCrm.Services
                 if (tenantId.HasValue)
                 {
                     var tenant = await _context.Tenants.FindAsync(tenantId.Value);
-                    if (tenant != null && !string.IsNullOrEmpty(tenant.MetaPhoneNumberId))
+                    if (tenant != null && tenant.MessagingProvider == "Meta")
                     {
-                        metaPhoneId = tenant.MetaPhoneNumberId;
-                        _logger.LogInformation("Loaded dynamic Tenant phone ID from DB for outbound Meta Cloud API. TenantId: {TenantId}", tenantId.Value);
+                        if (!string.IsNullOrEmpty(tenant.ProviderApiKey))
+                        {
+                            metaToken = tenant.ProviderApiKey;
+                        }
+                        if (!string.IsNullOrEmpty(tenant.ProviderSenderId))
+                        {
+                            metaPhoneId = tenant.ProviderSenderId;
+                        }
+                        _logger.LogInformation("Loaded dynamic Tenant Meta Cloud API credentials from DB. TenantId: {TenantId}", tenantId.Value);
                     }
                 }
 

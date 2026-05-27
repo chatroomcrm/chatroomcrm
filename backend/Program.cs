@@ -166,19 +166,38 @@ using (var scope = app.Services.CreateScope())
         // Self-healing: Ensure Timestamp column exists in Leads table for reporting
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Leads') AND name = 'Timestamp') BEGIN ALTER TABLE Leads ADD Timestamp DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(); END");
 
-        // Self-healing: Ensure WhatsApp columns exist in Tenants table for true multi-tenancy
+        // Self-healing: Ensure Unified WhatsApp columns exist in Tenants table for true multi-tenancy
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'WhatsAppNumber') BEGIN ALTER TABLE Tenants ADD WhatsAppNumber NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
-        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaAccessToken') BEGIN ALTER TABLE Tenants ADD MetaAccessToken NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
-        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaPhoneNumberId') BEGIN ALTER TABLE Tenants ADD MetaPhoneNumberId NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
-        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaBusinessAccountId') BEGIN ALTER TABLE Tenants ADD MetaBusinessAccountId NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MessagingProvider') BEGIN ALTER TABLE Tenants ADD MessagingProvider NVARCHAR(MAX) NULL; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ProviderAccountId') BEGIN ALTER TABLE Tenants ADD ProviderAccountId NVARCHAR(MAX) NULL; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ProviderApiKey') BEGIN ALTER TABLE Tenants ADD ProviderApiKey NVARCHAR(MAX) NULL; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ProviderSenderId') BEGIN ALTER TABLE Tenants ADD ProviderSenderId NVARCHAR(MAX) NULL; END");
+
+        // Self-healing: Backward-compatible migration from Meta-specific columns
+        context.Database.ExecuteSqlRaw(@"
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaAccessToken')
+            BEGIN
+                EXEC('UPDATE Tenants SET ProviderApiKey = MetaAccessToken, MessagingProvider = ''Meta'' WHERE (ProviderApiKey IS NULL OR ProviderApiKey = '''') AND MetaAccessToken IS NOT NULL AND MetaAccessToken <> '''';');
+            END");
+        context.Database.ExecuteSqlRaw(@"
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaPhoneNumberId')
+            BEGIN
+                EXEC('UPDATE Tenants SET ProviderSenderId = MetaPhoneNumberId WHERE (ProviderSenderId IS NULL OR ProviderSenderId = '''') AND MetaPhoneNumberId IS NOT NULL AND MetaPhoneNumberId <> '''';');
+            END");
+        context.Database.ExecuteSqlRaw(@"
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaBusinessAccountId')
+            BEGIN
+                EXEC('UPDATE Tenants SET ProviderAccountId = MetaBusinessAccountId WHERE (ProviderAccountId IS NULL OR ProviderAccountId = '''') AND MetaBusinessAccountId IS NOT NULL AND MetaBusinessAccountId <> '''';');
+            END");
 
         // Self-healing: Seed active production credentials for Durga Enterprises if empty (Tenant GUID: 73349044-4ef4-405d-bd9f-6e6e06344860)
         context.Database.ExecuteSqlRaw(@"
             UPDATE Tenants 
             SET WhatsAppNumber = '8143712528', 
-                MetaAccessToken = 'EAAOAfLtTZCVQBRrLBQPHZAewl5gqXkqxT7ktxK7N8sIZCM1ZASN8zZBQatZBqhUmtwMsEA8m5ZCOsjBKktQY4hLQiOErd5N2zkXJVcDmCBXNF81P4NYm7ZBfr2nb3JDN7exkZBsN8rPI4BE04TSpmA3nBvNhbEBbV0tY3ZAtkJxZCSVhtDXDRWteaIS0HchcGnDOVrwAhxwDwUb4az2GUFiQwG9ZBvixDxqm62tiDfvFdZAQZBU4QX0ZB0krliWZC7ZAxI4MWRAk1rQT7GQW2PGTdicyANoai', 
-                MetaPhoneNumberId = '1184346914753507',
-                MetaBusinessAccountId = '1720827125758007'
+                MessagingProvider = 'Meta',
+                ProviderApiKey = 'EAAOAfLtTZCVQBRrLBQPHZAewl5gqXkqxT7ktxK7N8sIZCM1ZASN8zZBQatZBqhUmtwMsEA8m5ZCOsjBKktQY4hLQiOErd5N2zkXJVcDmCBXNF81P4NYm7ZBfr2nb3JDN7exkZBsN8rPI4BE04TSpmA3nBvNhbEBbV0tY3ZAtkJxZCSVhtDXDRWteaIS0HchcGnDOVrwAhxwDwUb4az2GUFiQwG9ZBvixDxqm62tiDfvFdZAQZBU4QX0ZB0krliWZC7ZAxI4MWRAk1rQT7GQW2PGTdicyANoai', 
+                ProviderSenderId = '1184346914753507',
+                ProviderAccountId = '1720827125758007'
             WHERE Id = '73349044-4ef4-405d-bd9f-6e6e06344860'");
 
         // Self-healing: Ensure TenantTemplates table exists

@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using ChatFlowCrm.Data;
 
 namespace ChatFlowCrm.Services
 {
@@ -11,17 +12,20 @@ namespace ChatFlowCrm.Services
         private readonly ITwilioWhatsAppService _twilioService;
         private readonly ILogger<WhatsAppService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly AppDbContext _context;
 
         public WhatsAppService(
             IMetaWhatsAppService metaService, 
             ITwilioWhatsAppService twilioService, 
             ILogger<WhatsAppService> logger, 
-            IConfiguration configuration)
+            IConfiguration configuration,
+            AppDbContext context)
         {
             _metaService = metaService;
             _twilioService = twilioService;
             _logger = logger;
             _configuration = configuration;
+            _context = context;
         }
 
         public async Task<bool> SendWhatsAppMessageAsync(string toPhone, string content, string providerConfig)
@@ -35,9 +39,21 @@ namespace ChatFlowCrm.Services
             try
             {
                 string preferredProvider = _configuration["Messaging:PreferredProvider"] ?? "Meta";
-                bool useTwilioFirst = preferredProvider.Equals("Twilio", StringComparison.OrdinalIgnoreCase);
 
-                if (useTwilioFirst)
+                // Dynamically resolve provider from database Tenant configuration
+                if (resolvedTenantId.HasValue)
+                {
+                    var tenant = await _context.Tenants.FindAsync(resolvedTenantId.Value);
+                    if (tenant != null && !string.IsNullOrEmpty(tenant.MessagingProvider))
+                    {
+                        preferredProvider = tenant.MessagingProvider;
+                        _logger.LogInformation("Orchestrator resolved active Tenant messaging provider from DB: {Provider}", preferredProvider);
+                    }
+                }
+
+                bool useTwilio = preferredProvider.Equals("Twilio", StringComparison.OrdinalIgnoreCase);
+
+                if (useTwilio)
                 {
                     _logger.LogInformation("Orchestrating outbound WhatsApp message: Dispatching to Twilio first...");
                     bool twilioSuccess = await _twilioService.SendWhatsAppMessageAsync(toPhone, content, resolvedTenantId);
