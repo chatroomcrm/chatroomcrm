@@ -350,7 +350,7 @@ namespace ChatFlowCrm.Controllers
             public string? Password { get; set; }
         }
 
-        [Authorize(Roles = "SuperAdmin,TenantAdmin")]
+        [Authorize(Roles = "TenantAdmin")]
         [HttpPut("users/{userId}")]
         public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
         {

@@ -278,48 +278,6 @@ const Settings = {
                             </table>
                         </div>
                     </div>
-
-                    <!-- Meta Webhook / API Integration Card -->
-                    <div class="settings-card" style="display:flex; flex-direction:column; gap:1rem; grid-column: span 2;">
-                        <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; border-left: 3px solid var(--theme-glow); padding-left: 0.5rem; margin:0; display:flex; align-items:center; gap:0.5rem;">
-                            🔌 Meta Cloud API Webhook Integration
-                        </h3>
-                        <p style="color:var(--text-muted); font-size:0.75rem; margin:0;">
-                            Connect your native <strong>WhatsApp Business Platform (Meta Cloud API)</strong> directly. Copy these parameters and configure them in your Meta Developer Console to receive messages in real time.
-                        </p>
-                        
-                        <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 0.5rem;">
-                            <div class="form-group">
-                                <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
-                                    Webhook Callback URL
-                                    <span style="color: var(--theme-glow); font-size: 0.65rem; cursor: pointer; text-transform: none; font-weight: 600;" onclick="Settings.copyToClipboard('http://chatroomcrm-001-site1.ktempurl.com/api/webhook/meta?tenantId=' + Auth.getUser().tenantId, 'Webhook URL copied!')">📋 Copy</span>
-                                </label>
-                                <div style="display:flex; gap:0.5rem; margin-top:0.3rem;">
-                                    <input type="text" readonly value="http://chatroomcrm-001-site1.ktempurl.com/api/webhook/meta?tenantId=${currentUser.tenantId}" style="background: rgba(255,255,255,0.02); color: var(--text-main); border-color: rgba(255,255,255,0.05); font-size:0.75rem; font-family:var(--font-mono); flex:1; padding: 0.5rem; border-radius: 6px;">
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; display:flex; justify-content:space-between; align-items:center;">
-                                    Verification Token (Verify Token)
-                                    <span style="color: var(--theme-glow); font-size: 0.65rem; cursor: pointer; text-transform: none; font-weight: 600;" onclick="Settings.copyToClipboard('ChatRoomMetaToken2026', 'Verification Token copied!')">📋 Copy</span>
-                                </label>
-                                <div style="display:flex; gap:0.5rem; margin-top:0.3rem;">
-                                    <input type="text" readonly value="ChatRoomMetaToken2026" style="background: rgba(255,255,255,0.02); color: var(--text-main); border-color: rgba(255,255,255,0.05); font-size:0.75rem; font-family:var(--font-mono); flex:1; padding: 0.5rem; border-radius: 6px;">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="background: rgba(0, 242, 254, 0.03); border: 1px dashed rgba(0, 242, 254, 0.15); border-radius: 8px; padding: 0.85rem; margin-top: 0.5rem;">
-                            <h4 style="margin: 0 0 0.4rem 0; font-size: 0.75rem; color: #fff; font-weight:600; font-family: var(--font-display);">💡 Meta Setup Instructions:</h4>
-                            <ol style="margin: 0; padding-left: 1.1rem; color: var(--text-muted); font-size: 0.7rem; display: flex; flex-direction: column; gap: 0.35rem;">
-                                <li>Log in to the <strong><a href="https://developers.facebook.com/" target="_blank" style="color: var(--theme-glow); text-decoration: underline;">Meta Developer Console</a></strong> and select your App.</li>
-                                <li>Under <strong>WhatsApp &gt; Configuration</strong>, click <strong>Edit</strong> in the Webhooks section.</li>
-                                <li>Paste the <strong>Webhook Callback URL</strong> and <strong>Verification Token</strong> shown above.</li>
-                                <li>Click <strong>Verify and Save</strong>. Then click <strong>Manage</strong> and subscribe to the <strong>messages</strong> webhook field.</li>
-                            </ol>
-                        </div>
-                    </div>
                 </div>
             `;
         }
@@ -503,15 +461,13 @@ const Settings = {
             const escapedName = u.name.replace(/'/g, "\\'");
             const escapedEmail = u.email.replace(/'/g, "\\'");
             const escapedPhone = (u.phone || '').replace(/'/g, "\\'");
-            const editBtn = `<button class="btn-action-activate" onclick="Settings.showEditUserModal('${u.id}', '${escapedName}', '${escapedEmail}', '${escapedPhone}', '${u.role}')" style="background: rgba(0, 242, 254, 0.15); border-color: rgba(0, 242, 254, 0.25); color: var(--theme-glow); padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Edit ✏️</button>`;
-
             const toggleBtn = u.isBlocked ? 
                 `<button class="btn-action-activate" onclick="Settings.toggleUserBlock('${u.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Activate</button>` :
                 `<button class="btn-action-suspend" onclick="Settings.toggleUserBlock('${u.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Suspend</button>`;
 
             const actionsHtml = isSuper ? 
-                `<div style="display:flex; align-items:center; gap:0.4rem;">${editBtn}<span style="color:var(--text-muted); font-size:0.65rem;">System</span></div>` :
-                `<div style="display:flex; align-items:center; gap:0.4rem;">${editBtn}${toggleBtn}</div>`;
+                `<div style="display:flex; align-items:center; gap:0.4rem;"><span style="color:var(--text-muted); font-size:0.65rem;">System Owner</span></div>` :
+                `<div style="display:flex; align-items:center; gap:0.4rem;">${toggleBtn}</div>`;
 
             container.innerHTML += `
                 <tr>
