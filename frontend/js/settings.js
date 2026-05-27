@@ -6,6 +6,13 @@ const Settings = {
     activeGlowStart: '#00f2fe',
     activeGlowEnd: '#4facfe',
     activeLogoUrl: null,
+    tenantsPage: 1,
+    tenantsSearch: '',
+    usersPage: 1,
+    usersSearch: '',
+    logsPage: 1,
+    logsSearch: '',
+    logsLevel: '',
 
     async initialize() {
         this.renderPane();
@@ -93,9 +100,12 @@ const Settings = {
                     <div class="platform-split-layout">
                         <!-- Tenant Management -->
                         <div class="platform-card">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                                 <h3 style="margin:0;">🏢 Organizations</h3>
                                 <button class="login-mode-btn active" style="padding: 0.25rem 0.6rem; font-size: 0.7rem;" onclick="Settings.showAddOrganizationModal()">+ Add Organization</button>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <input type="text" id="sa-tenants-search" placeholder="🔍 Search organization..." oninput="Settings.handleTenantsSearch(this.value)" style="width:100%; padding:0.45rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; color:var(--text-main); box-sizing:border-box;">
                             </div>
                             <div class="platform-table-wrapper">
                                 <table class="platform-table">
@@ -112,19 +122,28 @@ const Settings = {
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.7rem; color:var(--text-muted);">
+                                <button class="login-mode-btn" id="btn-tenants-prev" onclick="Settings.changeTenantsPage(-1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">◀ Prev</button>
+                                <span id="info-tenants-page">Page 1</span>
+                                <button class="login-mode-btn" id="btn-tenants-next" onclick="Settings.changeTenantsPage(1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">Next ▶</button>
+                            </div>
                         </div>
 
                         <!-- User Management -->
                         <div class="platform-card">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                                 <h3 style="margin:0;">👥 Users</h3>
                                 <button class="login-mode-btn active" style="padding: 0.25rem 0.6rem; font-size: 0.7rem;" onclick="Settings.showAddUserModal()">+ Add User</button>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <input type="text" id="sa-users-search" placeholder="🔍 Search user name, email, role..." oninput="Settings.handleUsersSearch(this.value)" style="width:100%; padding:0.45rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; color:var(--text-main); box-sizing:border-box;">
                             </div>
                             <div class="platform-table-wrapper">
                                 <table class="platform-table">
                                     <thead>
                                         <tr>
                                             <th>User / Email</th>
+                                            <th>Phone</th>
                                             <th>Role</th>
                                             <th>Status</th>
                                             <th>Actions</th>
@@ -135,16 +154,22 @@ const Settings = {
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.7rem; color:var(--text-muted);">
+                                <button class="login-mode-btn" id="btn-users-prev" onclick="Settings.changeUsersPage(-1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">◀ Prev</button>
+                                <span id="info-users-page">Page 1</span>
+                                <button class="login-mode-btn" id="btn-users-next" onclick="Settings.changeUsersPage(1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">Next ▶</button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Server Exception Logger Panel -->
                     <div class="logs-inspector-panel">
-                        <div class="logs-header-actions">
-                            <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;">
+                        <div class="logs-header-actions" style="flex-wrap:wrap; gap:1rem;">
+                            <h3 style="font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem; margin:0;">
                                 📜 Exception Trace & Performance Logs
                             </h3>
-                            <div class="logs-filter-group">
+                            <div class="logs-filter-group" style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="logs-search-input" placeholder="🔍 Search logs..." oninput="Settings.handleLogsSearch(this.value)" style="padding:0.35rem 0.55rem; font-size:0.7rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:4px; color:var(--text-main); width:150px;">
                                 <label for="logs-level-filter">Filter:</label>
                                 <select id="logs-level-filter" class="logs-filter-select" onchange="Settings.filterSystemLogs(this.value)">
                                     <option value="">ALL LEVELS</option>
@@ -157,6 +182,11 @@ const Settings = {
                         </div>
                         <div class="logs-list-wrapper" id="sa-logs-stream">
                             <div style="color:var(--text-muted); text-align:center; padding:2rem;">No entries found.</div>
+                        </div>
+                        <div class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; padding:0.25rem 0.5rem; font-size:0.7rem; color:var(--text-muted);">
+                            <button class="login-mode-btn" id="btn-logs-prev" onclick="Settings.changeLogsPage(-1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">◀ Prev</button>
+                            <span id="info-logs-page">Page 1</span>
+                            <button class="login-mode-btn" id="btn-logs-next" onclick="Settings.changeLogsPage(1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">Next ▶</button>
                         </div>
                     </div>
                 </div>
@@ -236,8 +266,10 @@ const Settings = {
                                 <thead>
                                     <tr>
                                         <th>Name / Email</th>
+                                        <th>Phone</th>
                                         <th>Role</th>
                                         <th>Status</th>
+                                        <th>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody id="ta-users-list">
@@ -303,26 +335,136 @@ const Settings = {
             const data = await res.json();
 
             // Populate analytics UI
-            document.getElementById('sa-total-tenants').innerText = data.totalTenants;
-            document.getElementById('sa-total-users').innerText = data.totalUsers;
-            document.getElementById('sa-total-leads').innerText = data.totalLeads;
-            document.getElementById('sa-total-messages').innerText = data.totalMessages;
-            document.getElementById('sa-total-logs').innerText = data.totalLogs;
+            const elTotalTenants = document.getElementById('sa-total-tenants');
+            if (elTotalTenants) elTotalTenants.innerText = data.totalTenants;
+            const elTotalUsers = document.getElementById('sa-total-users');
+            if (elTotalUsers) elTotalUsers.innerText = data.totalUsers;
+            const elTotalLeads = document.getElementById('sa-total-leads');
+            if (elTotalLeads) elTotalLeads.innerText = data.totalLeads;
+            const elTotalMessages = document.getElementById('sa-total-messages');
+            if (elTotalMessages) elTotalMessages.innerText = data.totalMessages;
+            const elTotalLogs = document.getElementById('sa-total-logs');
+            if (elTotalLogs) elTotalLogs.innerText = data.totalLogs;
 
-            // Load list of tenants
-            this.renderTenantsList(data.tenantBreakdown);
-
-            // Fetch users list
-            logConsole(`[API Request] GET /api/superadmin/users...`);
-            const usersRes = await Auth.apiFetch('/api/superadmin/users');
-            const users = await usersRes.json();
-            this.renderUsersList(users);
-
-            // Render logs
-            this.renderLogsStream(data.recentLogs);
+            // Load all three paginated sections
+            await this.loadTenants();
+            await this.loadUsers();
+            await this.loadSystemLogs();
         } catch (err) {
             logConsole(`[SuperAdmin API Error] Failed: ${err.message}`);
         }
+    },
+
+    async loadTenants() {
+        try {
+            const query = `?page=${this.tenantsPage}&pageSize=10&search=${encodeURIComponent(this.tenantsSearch)}`;
+            logConsole(`[API Request] GET /api/superadmin/tenants${query}...`);
+            const res = await Auth.apiFetch(`/api/superadmin/tenants${query}`);
+            const tenants = await res.json();
+            this.renderTenantsList(tenants);
+
+            const totalHeader = res.headers.get('X-Pagination-Total-Count');
+            const total = totalHeader ? parseInt(totalHeader) : tenants.length;
+            const totalPages = Math.ceil(total / 10) || 1;
+
+            const infoEl = document.getElementById('info-tenants-page');
+            if (infoEl) infoEl.innerText = `Page ${this.tenantsPage} of ${totalPages}`;
+
+            const prevBtn = document.getElementById('btn-tenants-prev');
+            if (prevBtn) prevBtn.disabled = this.tenantsPage <= 1;
+
+            const nextBtn = document.getElementById('btn-tenants-next');
+            if (nextBtn) nextBtn.disabled = this.tenantsPage >= totalPages;
+        } catch (err) {
+            logConsole(`[API Error] loadTenants failed: ${err.message}`);
+        }
+    },
+
+    async loadUsers() {
+        try {
+            const query = `?page=${this.usersPage}&pageSize=10&search=${encodeURIComponent(this.usersSearch)}`;
+            logConsole(`[API Request] GET /api/superadmin/users${query}...`);
+            const res = await Auth.apiFetch(`/api/superadmin/users${query}`);
+            const users = await res.json();
+            this.renderUsersList(users);
+
+            const totalHeader = res.headers.get('X-Pagination-Total-Count');
+            const total = totalHeader ? parseInt(totalHeader) : users.length;
+            const totalPages = Math.ceil(total / 10) || 1;
+
+            const infoEl = document.getElementById('info-users-page');
+            if (infoEl) infoEl.innerText = `Page ${this.usersPage} of ${totalPages}`;
+
+            const prevBtn = document.getElementById('btn-users-prev');
+            if (prevBtn) prevBtn.disabled = this.usersPage <= 1;
+
+            const nextBtn = document.getElementById('btn-users-next');
+            if (nextBtn) nextBtn.disabled = this.usersPage >= totalPages;
+        } catch (err) {
+            logConsole(`[API Error] loadUsers failed: ${err.message}`);
+        }
+    },
+
+    async loadSystemLogs() {
+        try {
+            const levelParam = this.logsLevel ? `&logLevel=${this.logsLevel}` : '';
+            const query = `?page=${this.logsPage}&pageSize=10&search=${encodeURIComponent(this.logsSearch)}${levelParam}`;
+            logConsole(`[API Request] GET /api/superadmin/logs${query}...`);
+            const res = await Auth.apiFetch(`/api/superadmin/logs${query}`);
+            const logs = await res.json();
+            this.renderLogsStream(logs);
+
+            const totalHeader = res.headers.get('X-Pagination-Total-Count');
+            const total = totalHeader ? parseInt(totalHeader) : logs.length;
+            const totalPages = Math.ceil(total / 10) || 1;
+
+            const infoEl = document.getElementById('info-logs-page');
+            if (infoEl) infoEl.innerText = `Page ${this.logsPage} of ${totalPages}`;
+
+            const prevBtn = document.getElementById('btn-logs-prev');
+            if (prevBtn) prevBtn.disabled = this.logsPage <= 1;
+
+            const nextBtn = document.getElementById('btn-logs-next');
+            if (nextBtn) nextBtn.disabled = this.logsPage >= totalPages;
+        } catch (err) {
+            logConsole(`[API Error] loadSystemLogs failed: ${err.message}`);
+        }
+    },
+
+    handleTenantsSearch(val) {
+        this.tenantsSearch = val;
+        this.tenantsPage = 1;
+        this.loadTenants();
+    },
+
+    changeTenantsPage(direction) {
+        this.tenantsPage += direction;
+        if (this.tenantsPage < 1) this.tenantsPage = 1;
+        this.loadTenants();
+    },
+
+    handleUsersSearch(val) {
+        this.usersSearch = val;
+        this.usersPage = 1;
+        this.loadUsers();
+    },
+
+    changeUsersPage(direction) {
+        this.usersPage += direction;
+        if (this.usersPage < 1) this.usersPage = 1;
+        this.loadUsers();
+    },
+
+    handleLogsSearch(val) {
+        this.logsSearch = val;
+        this.logsPage = 1;
+        this.loadSystemLogs();
+    },
+
+    changeLogsPage(direction) {
+        this.logsPage += direction;
+        if (this.logsPage < 1) this.logsPage = 1;
+        this.loadSystemLogs();
     },
 
 
@@ -357,12 +499,19 @@ const Settings = {
         users.forEach(u => {
             const badge = u.isBlocked ? `<span class="status-badge suspended">Suspended</span>` : `<span class="status-badge active">Active</span>`;
             const isSuper = u.role === UserRoles.SuperAdmin;
-            const actionBtn = isSuper ? 
-                `<span style="color:var(--text-muted); font-size:0.65rem;">System</span>` : 
-                (u.isBlocked ? 
-                    `<button class="btn-action-activate" onclick="Settings.toggleUserBlock('${u.id}')">Activate</button>` :
-                    `<button class="btn-action-suspend" onclick="Settings.toggleUserBlock('${u.id}')">Suspend</button>`
-                );
+            const phoneVal = u.phone || '-';
+            const escapedName = u.name.replace(/'/g, "\\'");
+            const escapedEmail = u.email.replace(/'/g, "\\'");
+            const escapedPhone = (u.phone || '').replace(/'/g, "\\'");
+            const editBtn = `<button class="btn-action-activate" onclick="Settings.showEditUserModal('${u.id}', '${escapedName}', '${escapedEmail}', '${escapedPhone}', '${u.role}')" style="background: rgba(0, 242, 254, 0.15); border-color: rgba(0, 242, 254, 0.25); color: var(--theme-glow); padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Edit ✏️</button>`;
+
+            const toggleBtn = u.isBlocked ? 
+                `<button class="btn-action-activate" onclick="Settings.toggleUserBlock('${u.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Activate</button>` :
+                `<button class="btn-action-suspend" onclick="Settings.toggleUserBlock('${u.id}')" style="padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Suspend</button>`;
+
+            const actionsHtml = isSuper ? 
+                `<div style="display:flex; align-items:center; gap:0.4rem;">${editBtn}<span style="color:var(--text-muted); font-size:0.65rem;">System</span></div>` :
+                `<div style="display:flex; align-items:center; gap:0.4rem;">${editBtn}${toggleBtn}</div>`;
 
             container.innerHTML += `
                 <tr>
@@ -370,9 +519,10 @@ const Settings = {
                         <div style="font-weight:600;">${u.name}</div>
                         <div style="font-size:0.6rem; color:var(--text-muted);">${u.email}</div>
                     </td>
+                    <td style="font-size:0.75rem;">${phoneVal}</td>
                     <td>${u.role}</td>
                     <td>${badge}</td>
-                    <td>${actionBtn}</td>
+                    <td>${actionsHtml}</td>
                 </tr>
             `;
         });
@@ -452,23 +602,30 @@ const Settings = {
         container.innerHTML = '';
 
         if (!users || users.length === 0) {
-            container.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">No staff registered yet.</td></tr>`;
+            container.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No staff registered yet.</td></tr>`;
             return;
         }
 
         users.forEach(u => {
             const badge = u.isBlocked ? `<span class="status-badge suspended">Suspended</span>` : `<span class="status-badge active">Active</span>`;
-            
+            const phoneVal = u.phone || '-';
+            const escapedName = u.name.replace(/'/g, "\\'");
+            const escapedEmail = u.email.replace(/'/g, "\\'");
+            const escapedPhone = (u.phone || '').replace(/'/g, "\\'");
+            const editBtn = `<button class="btn-action-activate" onclick="Settings.showEditUserModal('${u.id}', '${escapedName}', '${escapedEmail}', '${escapedPhone}', '${u.role}')" style="background: rgba(0, 242, 254, 0.15); border-color: rgba(0, 242, 254, 0.25); color: var(--theme-glow); padding: 0.25rem 0.5rem; font-size: 0.65rem; border-radius: 4px; cursor: pointer; transition: all 0.2s;">Edit ✏️</button>`;
+
             container.innerHTML += `
                 <tr>
                     <td>
                         <div style="font-weight:600;">${u.name}</div>
                         <div style="font-size:0.6rem; color:var(--text-muted);">${u.email}</div>
                     </td>
+                    <td style="font-size:0.75rem;">${phoneVal}</td>
                     <td>
                         <span style="font-size:0.65rem; font-family:var(--font-mono); color:var(--theme-glow); font-weight:600; text-transform:uppercase;">${u.role}</span>
                     </td>
                     <td>${badge}</td>
+                    <td>${editBtn}</td>
                 </tr>
             `;
         });
@@ -654,6 +811,149 @@ const Settings = {
         }
     },
 
+    showEditUserModal(userId, name, email, phone, role) {
+        // Remove any existing modal
+        const existing = document.getElementById('edit-user-modal');
+        if (existing) existing.remove();
+
+        const currentUser = Auth.getUser();
+        if (!currentUser) return;
+
+        let roleOptionsHtml = '';
+
+        if (currentUser.role === UserRoles.TenantAdmin) {
+            roleOptionsHtml = `
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Account Role</label>
+                    <input type="text" class="login-input" value="${role}" readonly style="background: rgba(255,255,255,0.02); color: var(--theme-glow); cursor: not-allowed; border-color: rgba(255,255,255,0.05); margin-top: 0.3rem;">
+                    <input type="hidden" id="edit-user-role" value="${role}">
+                </div>
+            `;
+        } else if (currentUser.role === UserRoles.SuperAdmin) {
+            roleOptionsHtml = `
+                <div class="form-group" style="margin-top: 0.75rem;">
+                    <label for="edit-user-role" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Account Role</label>
+                    <select id="edit-user-role" class="login-input" style="background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); margin-top: 0.3rem;">
+                        <option value="${UserRoles.Agent}" ${role === UserRoles.Agent ? 'selected' : ''}>Agent (Standard Staff)</option>
+                        <option value="${UserRoles.TenantAdmin}" ${role === UserRoles.TenantAdmin ? 'selected' : ''}>TenantAdmin (Business Owner)</option>
+                        <option value="${UserRoles.SuperAdmin}" ${role === UserRoles.SuperAdmin ? 'selected' : ''}>SuperAdmin (Platform Owner)</option>
+                    </select>
+                </div>
+            `;
+        }
+
+        const modalHtml = `
+            <div id="edit-user-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(8, 12, 22, 0.7); backdrop-filter: blur(8px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 2rem 1rem; box-sizing: border-box; z-index: 1000; animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+                <div class="login-card" style="width: 440px; border: 1px solid var(--border-color); background: rgba(15, 22, 42, 0.9); box-shadow: 0 20px 40px rgba(0,0,0,0.5); padding: 2.25rem; position: relative; margin: auto;">
+                    <button onclick="document.getElementById('edit-user-modal').remove()" style="position: absolute; top: 1.25rem; right: 1.25rem; background: transparent; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: color 0.2s; line-height: 1;" onmouseover="this.style.color='var(--accent-rose)'" onmouseout="this.style.color='var(--text-muted)'">&times;</button>
+                    
+                    <div style="text-align: center; margin-bottom: 1.5rem;">
+                        <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--text-main);">✏️ Edit User Details</h3>
+                        <p style="color: var(--text-muted); font-size: 0.75rem; margin-top: 0.25rem;">Update the user account parameters.</p>
+                    </div>
+
+                    <div id="edit-modal-err-box" style="display: none; background: rgba(244, 63, 94, 0.15); border: 1px solid var(--accent-rose); color: #fda4af; padding: 0.75rem; border-radius: 8px; font-size: 0.75rem; margin-bottom: 1.25rem; text-align: center;"></div>
+
+                    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                        <div class="form-group">
+                            <label for="edit-user-name" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Full Name</label>
+                            <input type="text" id="edit-user-name" class="login-input" value="${name}" required style="margin-top: 0.3rem;">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-user-email" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Email Address</label>
+                            <input type="email" id="edit-user-email" class="login-input" value="${email}" required style="margin-top: 0.3rem;">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-user-password" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Password (Leave blank to keep current)</label>
+                            <input type="password" id="edit-user-password" class="login-input" placeholder="Enter new secure password" style="margin-top: 0.3rem;">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-user-phone" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
+                            <input type="text" id="edit-user-phone" class="login-input" value="${phone}" required style="margin-top: 0.3rem;">
+                        </div>
+
+                        ${roleOptionsHtml}
+
+                        <button onclick="Settings.submitEditUserForm('${userId}')" class="login-submit-btn" style="margin-top: 1.25rem;">
+                            Save Changes 💾
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+
+    async submitEditUserForm(userId) {
+        const name = document.getElementById('edit-user-name').value.trim();
+        const email = document.getElementById('edit-user-email').value.trim();
+        const password = document.getElementById('edit-user-password').value;
+        const phone = document.getElementById('edit-user-phone').value.trim();
+        
+        const errBox = document.getElementById('edit-modal-err-box');
+        if (errBox) {
+            errBox.style.display = 'none';
+            errBox.innerText = '';
+        }
+
+        if (!name || !email || !phone) {
+            if (errBox) {
+                errBox.style.display = 'block';
+                errBox.innerText = 'Full Name, Email, and Phone Number are required.';
+            }
+            return;
+        }
+
+        try {
+            const body = { name, email, phone };
+            if (password) {
+                body.password = password;
+            }
+
+            logConsole(`[API Request] PUT /api/auth/users/${userId}...`);
+            const res = await Auth.apiFetch(`/api/auth/users/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                if (errBox) {
+                    errBox.style.display = 'block';
+                    errBox.innerText = data.message || 'Failed to update user account details.';
+                }
+                return;
+            }
+
+            triggerToast("User Updated", data.message || "User account details updated successfully.");
+            
+            // Close modal
+            const modal = document.getElementById('edit-user-modal');
+            if (modal) modal.remove();
+
+            // Refresh UI list
+            const currentUser = Auth.getUser();
+            if (currentUser) {
+                if (currentUser.role === UserRoles.SuperAdmin) {
+                    await this.loadPlatformAnalytics();
+                } else if (currentUser.role === UserRoles.TenantAdmin) {
+                    await this.loadTeamRegistry();
+                }
+            }
+        } catch (err) {
+            logConsole(`[Edit User Error] Failed: ${err.message}`);
+            if (errBox) {
+                errBox.style.display = 'block';
+                errBox.innerText = 'Connection error: ' + err.message;
+            }
+        }
+    },
+
     async showAddOrganizationModal() {
         const existing = document.getElementById('add-org-modal');
         if (existing) existing.remove();
@@ -766,15 +1066,9 @@ const Settings = {
     },
 
     async filterSystemLogs(level) {
-        try {
-            const queryParam = level ? `?logLevel=${level}` : '';
-            logConsole(`[API Request] GET /api/superadmin/logs${queryParam}...`);
-            const res = await Auth.apiFetch(`/api/superadmin/logs${queryParam}`);
-            const logs = await res.json();
-            this.renderLogsStream(logs);
-        } catch (err) {
-            logConsole(`[API Error] filterSystemLogs failed: ${err.message}`);
-        }
+        this.logsLevel = level;
+        this.logsPage = 1;
+        await this.loadSystemLogs();
     },
 
     // ----------------------------------------------------

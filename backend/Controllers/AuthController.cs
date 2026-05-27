@@ -342,6 +342,89 @@ namespace ChatFlowCrm.Controllers
             });
         }
 
+        public class UpdateUserRequest
+        {
+            public string Name { get; set; } = string.Empty;
+            public string Email { get; set; } = string.Empty;
+            public string Phone { get; set; } = string.Empty;
+            public string? Password { get; set; }
+        }
+
+        [Authorize(Roles = "SuperAdmin,TenantAdmin")]
+        [HttpPut("users/{userId}")]
+        public async Task<IActionResult> UpdateUser(Guid userId, [FromBody] UpdateUserRequest request)
+        {
+            var callerIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(callerIdStr) || !Guid.TryParse(callerIdStr, out var callerId))
+            {
+                return Unauthorized(new { message = "Invalid authentication claims." });
+            }
+
+            var caller = await _context.Users.FindAsync(callerId);
+            if (caller == null)
+            {
+                return Unauthorized(new { message = "User not found." });
+            }
+
+            var userToEdit = await _context.Users.FindAsync(userId);
+            if (userToEdit == null)
+            {
+                return NotFound(new { message = "User account not found." });
+            }
+
+            // Enforce Tenant boundaries:
+            // 1. TenantAdmin can only edit users within their own organization
+            // 2. TenantAdmin cannot edit a SuperAdmin user
+            if (caller.Role == UserRoles.TenantAdmin)
+            {
+                if (userToEdit.TenantId != caller.TenantId)
+                {
+                    return Forbid();
+                }
+                if (userToEdit.Role == UserRoles.SuperAdmin)
+                {
+                    return Forbid();
+                }
+            }
+
+            // Check if email already belongs to another user
+            var emailExists = await _context.Users.AnyAsync(u => u.Email == request.Email && u.Id != userId);
+            if (emailExists)
+            {
+                return BadRequest(new { message = "This email address is already registered to another user account." });
+            }
+
+            userToEdit.Name = request.Name;
+            userToEdit.Email = request.Email;
+            userToEdit.Phone = request.Phone;
+
+            if (!string.IsNullOrEmpty(request.Password))
+            {
+                userToEdit.PasswordHash = HashPassword(request.Password);
+            }
+
+            _context.Users.Update(userToEdit);
+            await _context.SaveChangesAsync();
+
+            await _logger.LogInfoAsync($"User account updated by {caller.Role} ({caller.Email}): Email={userToEdit.Email}, Name={userToEdit.Name}", "AuthController.UpdateUser", userToEdit.TenantId);
+
+            return Ok(new
+            {
+                success = true,
+                message = "User details updated successfully.",
+                user = new
+                {
+                    userToEdit.Id,
+                    userToEdit.Name,
+                    userToEdit.Email,
+                    userToEdit.Phone,
+                    userToEdit.Role,
+                    userToEdit.IsBlocked,
+                    userToEdit.TenantId
+                }
+            });
+        }
+
         private string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();

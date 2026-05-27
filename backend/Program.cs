@@ -16,7 +16,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 
 // 2. Dependency Injection
-builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>();
+builder.Services.AddHttpClient<IMetaWhatsAppService, MetaWhatsAppService>();
+builder.Services.AddHttpClient<ITwilioWhatsAppService, TwilioWhatsAppService>();
+builder.Services.AddScoped<IWhatsAppService, WhatsAppService>();
 builder.Services.AddSingleton<IDbLoggerService, DbLoggerService>();
 
 // 3. Register Controllers and Hubs

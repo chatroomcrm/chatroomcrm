@@ -47,7 +47,11 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetLeads([FromQuery] string? status)
+        public async Task<IActionResult> GetLeads(
+            [FromQuery] string? status,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
             var tenantId = ResolveTenantId();
             if (tenantId == Guid.Empty) return BadRequest("Tenant not resolved.");
@@ -71,8 +75,26 @@ namespace ChatFlowCrm.Controllers
                 query = query.Where(l => l.Status == status);
             }
 
+            if (!string.IsNullOrEmpty(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(l => l.Contact != null && (
+                    l.Contact.Name.ToLower().Contains(s) || 
+                    l.Contact.Phone.ToLower().Contains(s) || 
+                    (l.Contact.Email != null && l.Contact.Email.ToLower().Contains(s))
+                ));
+            }
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var totalCount = await query.CountAsync();
+            Response.Headers["X-Pagination-Total-Count"] = totalCount.ToString();
+
             var leads = await query
                 .OrderByDescending(l => l.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(l => new
                 {
                     l.Id,

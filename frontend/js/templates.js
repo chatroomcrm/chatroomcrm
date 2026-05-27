@@ -4,6 +4,8 @@
 
 const Templates = {
     selectedTenantId: null,
+    page: 1,
+    search: '',
 
     initialize: async function() {
         App.logConsole("[Templates Module] Initializing templates view...");
@@ -87,6 +89,28 @@ const Templates = {
         const tableBody = document.getElementById('templates-list-body');
         if (!tableBody) return;
 
+        // Proactively insert search bar in the card header if it doesn't exist yet!
+        const cardHeader = document.querySelector('.templates-inventory-card > div:first-child');
+        if (cardHeader && !document.getElementById('templates-search-input')) {
+            cardHeader.innerHTML += `
+                <div style="display:flex; gap:0.5rem; align-items:center; margin-left: auto; margin-right: 1.5rem;">
+                    <input type="text" id="templates-search-input" placeholder="🔍 Search template..." oninput="Templates.handleSearch(this.value)" style="padding:0.35rem 0.6rem; font-size:0.75rem; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:6px; color:var(--text-main); width:180px;">
+                </div>
+            `;
+        }
+
+        // Proactively insert pagination controls at the bottom of the card if they don't exist yet!
+        const cardContainer = document.querySelector('.templates-inventory-card');
+        if (cardContainer && !document.getElementById('templates-pagination')) {
+            cardContainer.insertAdjacentHTML('beforeend', `
+                <div id="templates-pagination" class="pagination-controls" style="display:flex; justify-content:space-between; align-items:center; padding:1rem 1.5rem; border-top:1px solid var(--border-color); font-size:0.7rem; color:var(--text-muted); flex-shrink:0;">
+                    <button class="login-mode-btn" id="btn-templates-prev" onclick="Templates.changePage(-1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">◀ Prev</button>
+                    <span id="info-templates-page">Page 1</span>
+                    <button class="login-mode-btn" id="btn-templates-next" onclick="Templates.changePage(1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">Next ▶</button>
+                </div>
+            `);
+        }
+
         tableBody.innerHTML = `
             <tr>
                 <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
@@ -96,12 +120,26 @@ const Templates = {
         `;
 
         try {
-            const queryParam = this.selectedTenantId ? `?tenantId=${this.selectedTenantId}` : '';
+            const tenantParam = this.selectedTenantId ? `&tenantId=${this.selectedTenantId}` : '';
+            const queryParam = `?page=${this.page}&pageSize=10&search=${encodeURIComponent(this.search)}${tenantParam}`;
             App.logConsole(`[API Request] GET /api/templates${queryParam}...`);
             const res = await Auth.apiFetch(`/api/templates${queryParam}`);
             if (res.ok) {
                 const list = await res.json();
                 this.renderTemplatesTable(list);
+
+                const totalHeader = res.headers.get('X-Pagination-Total-Count');
+                const total = totalHeader ? parseInt(totalHeader) : list.length;
+                const totalPages = Math.ceil(total / 10) || 1;
+
+                const infoEl = document.getElementById('info-templates-page');
+                if (infoEl) infoEl.innerText = `Page ${this.page} of ${totalPages}`;
+
+                const prevBtn = document.getElementById('btn-templates-prev');
+                if (prevBtn) prevBtn.disabled = this.page <= 1;
+
+                const nextBtn = document.getElementById('btn-templates-next');
+                if (nextBtn) nextBtn.disabled = this.page >= totalPages;
             } else {
                 tableBody.innerHTML = `
                     <tr>
@@ -120,6 +158,18 @@ const Templates = {
                 </tr>
             `;
         }
+    },
+
+    handleSearch: function(val) {
+        this.search = val;
+        this.page = 1;
+        this.loadTemplatesList();
+    },
+
+    changePage: function(direction) {
+        this.page += direction;
+        if (this.page < 1) this.page = 1;
+        this.loadTemplatesList();
     },
 
     renderTemplatesTable: function(list) {
@@ -190,7 +240,12 @@ const Templates = {
         formData.append('file', file);
 
         try {
-            const queryParam = this.selectedTenantId ? `?tenantId=${this.selectedTenantId}` : '';
+            const langSelect = document.getElementById('templates-language-select');
+            const lang = langSelect ? langSelect.value : 'en';
+
+            let queryParam = this.selectedTenantId ? `?tenantId=${this.selectedTenantId}` : '';
+            queryParam += queryParam ? `&language=${lang}` : `?language=${lang}`;
+
             App.logConsole(`[API Request] POST /api/templates/upload${queryParam} (multipart/form-data)...`);
             
             const token = Auth.getToken();

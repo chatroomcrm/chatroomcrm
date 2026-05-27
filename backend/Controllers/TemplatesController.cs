@@ -25,12 +25,14 @@ namespace ChatFlowCrm.Controllers
         private readonly AppDbContext _context;
         private readonly HttpClient _httpClient;
         private readonly IDbLoggerService _logger;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public TemplatesController(AppDbContext context, HttpClient httpClient, IDbLoggerService logger)
+        public TemplatesController(AppDbContext context, HttpClient httpClient, IDbLoggerService logger, Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _context = context;
             _httpClient = httpClient;
             _logger = logger;
+            _configuration = configuration;
         }
 
         private Guid ResolveTenantId(Guid? queryTenantId = null)
@@ -51,19 +53,43 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetTemplates([FromQuery] Guid? tenantId)
+        public async Task<IActionResult> GetTemplates(
+            [FromQuery] Guid? tenantId,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
             var finalTenantId = ResolveTenantId(tenantId);
-            var templates = await _context.TenantTemplates
-                .Where(t => t.TenantId == finalTenantId)
+            var query = _context.TenantTemplates
+                .Where(t => t.TenantId == finalTenantId);
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(t => 
+                    t.Name.ToLower().Contains(s) || 
+                    t.Body.ToLower().Contains(s) || 
+                    t.Category.ToLower().Contains(s)
+                );
+            }
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var totalCount = await query.CountAsync();
+            Response.Headers["X-Pagination-Total-Count"] = totalCount.ToString();
+
+            var templates = await query
                 .OrderByDescending(t => t.Timestamp)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return Ok(templates);
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadTemplatesCsv(IFormFile file, [FromQuery] Guid? tenantId)
+        public async Task<IActionResult> UploadTemplatesCsv(IFormFile file, [FromQuery] Guid? tenantId, [FromQuery] string language = "en")
         {
             if (file == null || file.Length == 0)
             {
@@ -75,6 +101,12 @@ namespace ChatFlowCrm.Controllers
             if (tenant == null)
             {
                 return BadRequest("Tenant not found.");
+            }
+
+            // Standardize language code from client input (default is en)
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                language = "en";
             }
 
             var importedTemplates = new List<TenantTemplate>();
@@ -94,16 +126,15 @@ namespace ChatFlowCrm.Controllers
 
                     // Parse CSV line cleanly, accounting for basic quotes
                     var parts = ParseCsvLine(line);
-                    if (parts.Count < 4)
+                    if (parts.Count < 3)
                     {
-                        failedRows.Add($"Row {rowNum}: Missing columns. Expected Name, Category, Language, Body.");
+                        failedRows.Add($"Row {rowNum}: Missing columns. Expected Name, Category, Body.");
                         continue;
                     }
 
                     string name = parts[0].Trim().ToLower().Replace(" ", "_");
                     string category = parts[1].Trim().ToUpper();
-                    string language = parts[2].Trim();
-                    string body = parts[3].Trim();
+                    string body = parts[2].Trim();
 
                     if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(body))
                     {
@@ -117,44 +148,57 @@ namespace ChatFlowCrm.Controllers
                         category = "UTILITY"; // Fallback to standard
                     }
 
-                    // 1. Programmatically upload to Meta Cloud API first if credentials are active
+                    // 1. Programmatically upload to Meta Cloud API first if Meta is the preferred provider and credentials are active
                     string status = "Approved"; // Local simulation status fallback
 
-                    if (!string.IsNullOrEmpty(tenant.MetaAccessToken) && 
-                        !string.IsNullOrEmpty(tenant.MetaBusinessAccountId) && 
-                        tenant.MetaBusinessAccountId != "PLACEHOLDER")
+                    var preferredProvider = _configuration["Messaging:PreferredProvider"] ?? "Meta";
+                    bool isTwilio = preferredProvider.Equals("Twilio", StringComparison.OrdinalIgnoreCase);
+
+                    if (isTwilio)
                     {
-                        try
-                        {
-                            var metaStatus = await CreateTemplateOnMetaAsync(
-                                tenant.MetaBusinessAccountId, 
-                                tenant.MetaAccessToken, 
-                                name, 
-                                category, 
-                                language, 
-                                body
-                            );
-                            if (metaStatus != null)
-                            {
-                                status = metaStatus; // Use actual status returned by Meta (Approved, Pending, or Rejected)
-                                await _logger.LogInfoAsync($"Successfully registered message template '{name}' on Meta WhatsApp API. Status: {status}", "TemplatesController.Upload", finalTenantId);
-                            }
-                            else
-                            {
-                                status = "Rejected"; // Meta API explicitly rejected the structure
-                                await _logger.LogWarningAsync($"Meta API rejected template creation for '{name}'. Saved locally as Rejected.", "TemplatesController.Upload", finalTenantId);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            status = "Pending";
-                            await _logger.LogErrorAsync($"Error programmatically creating template '{name}' on Meta. Saved locally as Pending.", ex, "TemplatesController.Upload", finalTenantId);
-                        }
+                        status = "Approved"; // Automatically approved locally for Twilio direct messaging
+                        await _logger.LogInfoAsync($"Twilio is active preferred provider. Template '{name}' saved locally and marked as Approved.", "TemplatesController.Upload", finalTenantId);
                     }
                     else
                     {
-                        status = "Simulated"; // Visual indicator showing credentials are not configured
-                        await _logger.LogInfoAsync($"Meta Business credentials missing for Tenant. Template '{name}' saved locally for sandbox offline simulation.", "TemplatesController.Upload", finalTenantId);
+                        var globalToken = _configuration["Meta:AccessToken"];
+                        if (!string.IsNullOrEmpty(globalToken) && 
+                            !string.IsNullOrEmpty(tenant.MetaBusinessAccountId) && 
+                            tenant.MetaBusinessAccountId != "PLACEHOLDER")
+                        {
+                            try
+                            {
+                                var metaStatus = await CreateTemplateOnMetaAsync(
+                                    finalTenantId,
+                                    tenant.MetaBusinessAccountId, 
+                                    globalToken, 
+                                    name, 
+                                    category, 
+                                    language, 
+                                    body
+                                );
+                                if (metaStatus != null)
+                                {
+                                    status = metaStatus; // Use actual status returned by Meta (Approved, Pending, or Rejected)
+                                    await _logger.LogInfoAsync($"Successfully registered message template '{name}' on Meta WhatsApp API. Status: {status}", "TemplatesController.Upload", finalTenantId);
+                                }
+                                else
+                                {
+                                    status = "Rejected"; // Meta API explicitly rejected the structure
+                                    await _logger.LogWarningAsync($"Meta API rejected template creation for '{name}'. Saved locally as Rejected.", "TemplatesController.Upload", finalTenantId);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                status = "Pending";
+                                await _logger.LogErrorAsync($"Error programmatically creating template '{name}' on Meta. Saved locally as Pending.", ex, "TemplatesController.Upload", finalTenantId);
+                            }
+                        }
+                        else
+                        {
+                            status = "Simulated"; // Visual indicator showing credentials are not configured
+                            await _logger.LogInfoAsync($"Meta Business credentials missing for Tenant. Template '{name}' saved locally for sandbox offline simulation.", "TemplatesController.Upload", finalTenantId);
+                        }
                     }
 
                     // 2. Check for duplicate templates to prevent duplicates in local DB
@@ -206,7 +250,7 @@ namespace ChatFlowCrm.Controllers
             });
         }
 
-        private async Task<string?> CreateTemplateOnMetaAsync(string wabaId, string accessToken, string name, string category, string language, string body)
+        private async Task<string?> CreateTemplateOnMetaAsync(Guid tenantId, string wabaId, string accessToken, string name, string category, string language, string body)
         {
             var url = $"https://graph.facebook.com/v20.0/{wabaId}/message_templates";
             var request = new HttpRequestMessage(HttpMethod.Post, url);
@@ -234,35 +278,59 @@ namespace ChatFlowCrm.Controllers
             var json = JsonSerializer.Serialize(payload);
             request.Content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.SendAsync(request);
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                try
-                {
-                    using var doc = JsonDocument.Parse(content);
-                    if (doc.RootElement.TryGetProperty("status", out var statusProp))
-                    {
-                        string metaStatus = statusProp.GetString() ?? "APPROVED";
-                        // Standardize string casing to match frontend expected values
-                        if (metaStatus.Equals("APPROVED", StringComparison.OrdinalIgnoreCase)) return "Approved";
-                        if (metaStatus.Equals("PENDING", StringComparison.OrdinalIgnoreCase)) return "Pending";
-                        if (metaStatus.Equals("REJECTED", StringComparison.OrdinalIgnoreCase)) return "Rejected";
-                        return metaStatus;
-                    }
-                }
-                catch {}
-                return "Approved";
-            }
-
-            var err = await response.Content.ReadAsStringAsync();
-            Console.WriteLine($"[META TEMPLATE CREATION ERROR] Code: {response.StatusCode}. Details: {err}");
             try
             {
-                await _logger.LogWarningAsync($"Meta template creation failed for '{name}' (HTTP {response.StatusCode}). Raw Response: {err}", "TemplatesController.CreateTemplateOnMetaAsync");
+                var response = await _httpClient.SendAsync(request);
+                if (response.IsSuccessStatusCode)
+                {
+                    var content = await response.Content.ReadAsStringAsync();
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(content);
+                        if (doc.RootElement.TryGetProperty("status", out var statusProp))
+                        {
+                            string metaStatus = statusProp.GetString() ?? "APPROVED";
+                            // Standardize string casing to match frontend expected values
+                            if (metaStatus.Equals("APPROVED", StringComparison.OrdinalIgnoreCase)) return "Approved";
+                            if (metaStatus.Equals("PENDING", StringComparison.OrdinalIgnoreCase)) return "Pending";
+                            if (metaStatus.Equals("REJECTED", StringComparison.OrdinalIgnoreCase)) return "Rejected";
+                            return metaStatus;
+                        }
+                    }
+                    catch {}
+                    return "Approved";
+                }
+
+                var err = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"[META TEMPLATE CREATION ERROR] Code: {response.StatusCode}. Details: {err}");
+                try
+                {
+                    var apiException = new HttpRequestException($"Meta Cloud API returned HTTP {(int)response.StatusCode} ({response.StatusCode}). Response Body: {err}");
+                    await _logger.LogErrorAsync(
+                        $"Meta template creation failed for '{name}' (HTTP {response.StatusCode}). Failed API response recorded.", 
+                        apiException, 
+                        "TemplatesController.CreateTemplateOnMetaAsync", 
+                        tenantId
+                    );
+                }
+                catch {}
+                return null; // Indicates API failure
             }
-            catch {}
-            return null; // Indicates API failure
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[META TEMPLATE CREATION EXCEPTION] Details: {ex}");
+                try
+                {
+                    await _logger.LogErrorAsync(
+                        $"Exception while executing Meta template creation API for '{name}': {ex.Message}", 
+                        ex, 
+                        "TemplatesController.CreateTemplateOnMetaAsync", 
+                        tenantId
+                    );
+                }
+                catch {}
+                throw;
+            }
         }
 
         private List<string> ParseCsvLine(string line)

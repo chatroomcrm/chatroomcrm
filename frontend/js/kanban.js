@@ -9,8 +9,8 @@ const Kanban = {
 
     async loadLeads() {
         try {
-            logConsole(`[API Request] GET /api/leads...`);
-            const res = await Auth.apiFetch('/api/leads');
+            logConsole(`[API Request] GET /api/leads?pageSize=1000...`);
+            const res = await Auth.apiFetch('/api/leads?pageSize=1000');
             const leads = await res.json();
             
             // Update in-memory db cache

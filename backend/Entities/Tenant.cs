@@ -12,7 +12,6 @@ namespace ChatFlowCrm.Entities
         public bool IsBlocked { get; set; } = false;
 
         public string WhatsAppNumber { get; set; } = string.Empty;
-        public string MetaAccessToken { get; set; } = string.Empty;
         public string MetaPhoneNumberId { get; set; } = string.Empty;
         public string MetaBusinessAccountId { get; set; } = string.Empty;
 

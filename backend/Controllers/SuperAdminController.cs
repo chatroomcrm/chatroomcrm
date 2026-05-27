@@ -17,11 +17,16 @@ namespace ChatFlowCrm.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IDbLoggerService _logger;
+        private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
-        public SuperAdminController(AppDbContext context, IDbLoggerService logger)
+        public SuperAdminController(
+            AppDbContext context, 
+            IDbLoggerService logger, 
+            Microsoft.Extensions.Configuration.IConfiguration configuration)
         {
             _context = context;
             _logger = logger;
+            _configuration = configuration;
         }
 
         [HttpGet("analytics")]
@@ -62,9 +67,26 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpGet("tenants")]
-        public async Task<IActionResult> GetTenants()
+        public async Task<IActionResult> GetTenants(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
-            var tenants = await _context.Tenants
+            var query = _context.Tenants.AsQueryable();
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(t => t.Name.ToLower().Contains(s));
+            }
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var totalCount = await query.CountAsync();
+            Response.Headers["X-Pagination-Total-Count"] = totalCount.ToString();
+
+            var tenants = await query
                 .Select(t => new
                 {
                     t.Id,
@@ -76,6 +98,8 @@ namespace ChatFlowCrm.Controllers
                     LeadsCount = t.Leads.Count
                 })
                 .OrderBy(t => t.Name)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return Ok(tenants);
@@ -166,9 +190,31 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpGet("users")]
-        public async Task<IActionResult> GetUsers()
+        public async Task<IActionResult> GetUsers(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
-            var users = await _context.Users
+            var query = _context.Users.AsQueryable();
+
+            if (!string.IsNullOrEmpty(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(u => 
+                    u.Name.ToLower().Contains(s) || 
+                    u.Email.ToLower().Contains(s) || 
+                    (u.Phone != null && u.Phone.ToLower().Contains(s)) || 
+                    u.Role.ToLower().Contains(s)
+                );
+            }
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var totalCount = await query.CountAsync();
+            Response.Headers["X-Pagination-Total-Count"] = totalCount.ToString();
+
+            var users = await query
                 .Select(u => new
                 {
                     u.Id,
@@ -181,6 +227,8 @@ namespace ChatFlowCrm.Controllers
                     TenantName = u.Tenant != null ? u.Tenant.Name : "Global Platform"
                 })
                 .OrderBy(u => u.Email)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return Ok(users);
@@ -210,7 +258,11 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpGet("logs")]
-        public async Task<IActionResult> GetSystemLogs([FromQuery] int limit = 100, [FromQuery] string? logLevel = null)
+        public async Task<IActionResult> GetSystemLogs(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? logLevel = null,
+            [FromQuery] string? search = null)
         {
             var query = _context.LogEntries.AsQueryable();
 
@@ -219,12 +271,57 @@ namespace ChatFlowCrm.Controllers
                 query = query.Where(l => l.LogLevel == logLevel);
             }
 
+            if (!string.IsNullOrEmpty(search))
+            {
+                var s = search.Trim().ToLower();
+                query = query.Where(l => 
+                    l.Message.ToLower().Contains(s) || 
+                    (l.Exception != null && l.Exception.ToLower().Contains(s)) || 
+                    (l.Source != null && l.Source.ToLower().Contains(s))
+                );
+            }
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+
+            var totalCount = await query.CountAsync();
+            Response.Headers["X-Pagination-Total-Count"] = totalCount.ToString();
+
             var logs = await query
                 .OrderByDescending(l => l.Timestamp)
-                .Take(limit)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return Ok(logs);
+        }
+
+        [HttpPost("purge-all-data")]
+        [AllowAnonymous]
+        public async Task<IActionResult> PurgeAllData([FromQuery] string secret)
+        {
+            var configuredSecret = _configuration["Security:PurgeSecret"];
+            if (string.IsNullOrEmpty(configuredSecret) || secret != configuredSecret)
+            {
+                return Forbid("Invalid secret.");
+            }
+
+            try
+            {
+                // Force deletion in order of dependencies
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Messages");
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Tasks");
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Leads");
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM Contacts");
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM TenantTemplates");
+                await _context.Database.ExecuteSqlRawAsync("DELETE FROM LogEntries");
+
+                return Ok(new { success = true, message = "All database tables (Messages, Tasks, Leads, Contacts, Templates, Logs) cleared successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
         }
     }
 }

@@ -375,7 +375,7 @@
           <div class="templates-header-bar">
             <div>
               <h2 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; color: var(--text-main); margin: 0;">WhatsApp Message Templates</h2>
-              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Upload your spreadsheet templates to automatically register them in Meta and save them in the CRM database.</p>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Upload your spreadsheet templates to automatically register them and save them in the CRM database.</p>
             </div>
 
             <!-- Dynamic Tenant Selector Group (only visible for SuperAdmin) -->
@@ -407,6 +407,20 @@
                     <div style="font-size: 0.75rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.15rem;">Choose templates.csv</div>
                     <div style="font-size: 0.65rem; color: var(--text-muted);" id="templates-file-name">No file selected</div>
                   </div>
+
+                  <!-- Dynamic Language Dropdown -->
+                  <div style="margin-bottom: 0.75rem; text-align: left;">
+                    <label for="templates-language-select" style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 0.25rem;">Template Language</label>
+                    <select id="templates-language-select" style="width: 100%; padding: 0.45rem 0.6rem; font-size: 0.75rem; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='var(--theme-glow)'" onblur="this.style.borderColor='var(--border-color)'">
+                      <option value="en_US" selected>English (US) (en_US)</option>
+                      <option value="en_GB">English (UK) (en_GB)</option>
+                      <option value="en">English (Generic) (en)</option>
+                      <option value="hi">Hindi (hi)</option>
+                      <option value="es">Spanish (es)</option>
+                      <option value="fr">French (fr)</option>
+                      <option value="pt">Portuguese (pt)</option>
+                    </select>
+                  </div>
                   
                   <button type="submit" id="btn-upload-templates" style="width: 100%; background: linear-gradient(135deg, var(--theme-glow), var(--theme-glow-end)); color: #0a0f1d; border: none; padding: 0.55rem; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.15s ease;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
                     Upload & Register ⚡
@@ -417,12 +431,12 @@
               <!-- Help Guide Card -->
               <div class="metric-card" style="background: rgba(255,255,255,0.01); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 12px; text-align: left; font-size: 0.72rem; flex-shrink: 0;">
                 <h4 style="margin: 0 0 0.5rem 0; font-family: var(--font-display); color: var(--text-main); font-size: 0.92rem; font-weight: 600;">Onboarding Guide 📖</h4>
-                <p style="color: var(--text-muted); line-height: 1.35; margin-bottom: 0.75rem;">All templates are processed programmatically through Meta Cloud API and stored in your secure workspace database.</p>
+                <p style="color: var(--text-muted); line-height: 1.35; margin-bottom: 0.75rem;">All templates are processed programmatically and stored in your secure workspace database.</p>
                 
                 <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 0.6rem; border-radius: 6px; margin-bottom: 0.75rem;">
                   <strong style="color: var(--text-main); display: block; margin-bottom: 0.2rem;">Format Rules:</strong>
                   <ul style="margin: 0; padding-left: 1rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.15rem;">
-                    <li>Columns: Name, Category, Language, Body</li>
+                    <li>Columns: Name, Category, Body</li>
                     <li>Lowercase underscores only for Name</li>
                     <li>Use {{1}}, {{2}} for dynamic variables</li>
                   </ul>
@@ -480,14 +494,14 @@
 
   <!-- Bottom Core JS Modules -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
-  <script src="js/roles.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/chat.js"></script>
-  <script src="js/kanban.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/settings.js"></script>
-  <script src="js/templates.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/particles.js"></script>
+  <script src="js/roles.js?v=2"></script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/chat.js?v=2"></script>
+  <script src="js/kanban.js?v=2"></script>
+  <script src="js/db.js?v=2"></script>
+  <script src="js/settings.js?v=2"></script>
+  <script src="js/templates.js?v=2"></script>
+  <script src="js/app.js?v=2"></script>
+  <script src="js/particles.js?v=2"></script>
 </body>
 </html>
