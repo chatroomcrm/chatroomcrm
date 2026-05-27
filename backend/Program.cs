@@ -168,16 +168,21 @@ using (var scope = app.Services.CreateScope())
 
         // Self-healing: Ensure Unified WhatsApp columns exist in Tenants table for true multi-tenancy
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'WhatsAppNumber') BEGIN ALTER TABLE Tenants ADD WhatsAppNumber NVARCHAR(MAX) NOT NULL DEFAULT ''; END");
-        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MessagingProvider') BEGIN ALTER TABLE Tenants ADD MessagingProvider NVARCHAR(MAX) NULL; END");
+        context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ServiceType') BEGIN ALTER TABLE Tenants ADD ServiceType NVARCHAR(MAX) NULL; END");
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ProviderAccountId') BEGIN ALTER TABLE Tenants ADD ProviderAccountId NVARCHAR(MAX) NULL; END");
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ProviderApiKey') BEGIN ALTER TABLE Tenants ADD ProviderApiKey NVARCHAR(MAX) NULL; END");
         context.Database.ExecuteSqlRaw("IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'ProviderSenderId') BEGIN ALTER TABLE Tenants ADD ProviderSenderId NVARCHAR(MAX) NULL; END");
 
-        // Self-healing: Backward-compatible migration from Meta-specific columns
+        // Self-healing: Backward-compatible migration from legacy columns
+        context.Database.ExecuteSqlRaw(@"
+            IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MessagingProvider')
+            BEGIN
+                EXEC('UPDATE Tenants SET ServiceType = MessagingProvider WHERE (ServiceType IS NULL OR ServiceType = '''') AND MessagingProvider IS NOT NULL AND MessagingProvider <> '''';');
+            END");
         context.Database.ExecuteSqlRaw(@"
             IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaAccessToken')
             BEGIN
-                EXEC('UPDATE Tenants SET ProviderApiKey = MetaAccessToken, MessagingProvider = ''Meta'' WHERE (ProviderApiKey IS NULL OR ProviderApiKey = '''') AND MetaAccessToken IS NOT NULL AND MetaAccessToken <> '''';');
+                EXEC('UPDATE Tenants SET ProviderApiKey = MetaAccessToken, ServiceType = ''Meta'' WHERE (ProviderApiKey IS NULL OR ProviderApiKey = '''') AND MetaAccessToken IS NOT NULL AND MetaAccessToken <> '''';');
             END");
         context.Database.ExecuteSqlRaw(@"
             IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Tenants') AND name = 'MetaPhoneNumberId')
@@ -194,7 +199,7 @@ using (var scope = app.Services.CreateScope())
         context.Database.ExecuteSqlRaw(@"
             UPDATE Tenants 
             SET WhatsAppNumber = '8143712528', 
-                MessagingProvider = 'Meta',
+                ServiceType = 'Meta',
                 ProviderApiKey = 'EAAOAfLtTZCVQBRrLBQPHZAewl5gqXkqxT7ktxK7N8sIZCM1ZASN8zZBQatZBqhUmtwMsEA8m5ZCOsjBKktQY4hLQiOErd5N2zkXJVcDmCBXNF81P4NYm7ZBfr2nb3JDN7exkZBsN8rPI4BE04TSpmA3nBvNhbEBbV0tY3ZAtkJxZCSVhtDXDRWteaIS0HchcGnDOVrwAhxwDwUb4az2GUFiQwG9ZBvixDxqm62tiDfvFdZAQZBU4QX0ZB0krliWZC7ZAxI4MWRAk1rQT7GQW2PGTdicyANoai', 
                 ProviderSenderId = '1184346914753507',
                 ProviderAccountId = '1720827125758007'

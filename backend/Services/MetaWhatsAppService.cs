@@ -41,7 +41,7 @@ namespace ChatFlowCrm.Services
                 if (tenantId.HasValue)
                 {
                     var tenant = await _context.Tenants.FindAsync(tenantId.Value);
-                    if (tenant != null && tenant.MessagingProvider == "Meta")
+                    if (tenant != null && tenant.ServiceType == "Meta")
                     {
                         if (!string.IsNullOrEmpty(tenant.ProviderApiKey))
                         {

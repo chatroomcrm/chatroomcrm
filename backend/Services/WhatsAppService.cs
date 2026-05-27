@@ -44,9 +44,9 @@ namespace ChatFlowCrm.Services
                 if (resolvedTenantId.HasValue)
                 {
                     var tenant = await _context.Tenants.FindAsync(resolvedTenantId.Value);
-                    if (tenant != null && !string.IsNullOrEmpty(tenant.MessagingProvider))
+                    if (tenant != null && !string.IsNullOrEmpty(tenant.ServiceType))
                     {
-                        preferredProvider = tenant.MessagingProvider;
+                        preferredProvider = tenant.ServiceType;
                         _logger.LogInformation("Orchestrator resolved active Tenant messaging provider from DB: {Provider}", preferredProvider);
                     }
                 }

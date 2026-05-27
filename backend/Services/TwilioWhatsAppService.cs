@@ -44,7 +44,7 @@ namespace ChatFlowCrm.Services
                 if (tenantId.HasValue)
                 {
                     var tenant = await _context.Tenants.FindAsync(tenantId.Value);
-                    if (tenant != null && tenant.MessagingProvider == "Twilio")
+                    if (tenant != null && tenant.ServiceType == "Twilio")
                     {
                         if (!string.IsNullOrEmpty(tenant.ProviderAccountId))
                             accountSid = tenant.ProviderAccountId;

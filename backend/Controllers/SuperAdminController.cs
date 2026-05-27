@@ -110,6 +110,12 @@ namespace ChatFlowCrm.Controllers
             public string Name { get; set; } = string.Empty;
             public string LogoUrl { get; set; } = string.Empty;
             public string ThemeColor { get; set; } = string.Empty;
+
+            public string? ServiceType { get; set; } // "Twilio", "Meta", or "None"
+            public string WhatsAppNumber { get; set; } = string.Empty;
+            public string? ProviderAccountId { get; set; }
+            public string? ProviderApiKey { get; set; }
+            public string? ProviderSenderId { get; set; }
         }
 
         [HttpPost("tenants")]
@@ -141,12 +147,38 @@ namespace ChatFlowCrm.Controllers
                 themeColor = "#00f2fe|#4facfe";
             }
 
+            // Real-time API credentials verification
+            if (!string.IsNullOrEmpty(request.ServiceType) && !request.ServiceType.Equals("None", StringComparison.OrdinalIgnoreCase))
+            {
+                var isValid = await VerifyProviderCredentialsAsync(
+                    request.ServiceType, 
+                    request.ProviderAccountId, 
+                    request.ProviderApiKey, 
+                    request.ProviderSenderId
+                );
+                if (!isValid)
+                {
+                    return BadRequest(new { message = $"Verification failed for the selected {request.ServiceType} credentials. Please check your Account SID/ID and Token/Key." });
+                }
+            }
+
+            var formattedWhatsApp = request.WhatsAppNumber?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(formattedWhatsApp))
+            {
+                formattedWhatsApp = formattedWhatsApp.Replace("whatsapp:", "").Replace(" ", "").Trim();
+            }
+
             var newTenant = new Tenant
             {
                 Name = request.Name.Trim(),
                 LogoUrl = logoUrl,
                 ThemeColor = themeColor,
-                IsBlocked = false
+                IsBlocked = false,
+                ServiceType = request.ServiceType,
+                WhatsAppNumber = formattedWhatsApp,
+                ProviderAccountId = string.IsNullOrEmpty(request.ProviderAccountId) ? null : request.ProviderAccountId.Trim(),
+                ProviderApiKey = string.IsNullOrEmpty(request.ProviderApiKey) ? null : request.ProviderApiKey.Trim(),
+                ProviderSenderId = string.IsNullOrEmpty(request.ProviderSenderId) ? null : request.ProviderSenderId.Trim()
             };
 
             _context.Tenants.Add(newTenant);
@@ -169,6 +201,42 @@ namespace ChatFlowCrm.Controllers
                     LeadsCount = 0
                 }
             });
+        }
+
+        private async Task<bool> VerifyProviderCredentialsAsync(string serviceType, string? accountId, string? apiKey, string? senderId)
+        {
+            try
+            {
+                using var client = new System.Net.Http.HttpClient();
+                if (serviceType.Equals("Twilio", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(apiKey)) return false;
+                    
+                    var requestUrl = $"https://api.twilio.com/2010-04-01/Accounts/{accountId}.json";
+                    var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, requestUrl);
+                    var authBytes = System.Text.Encoding.UTF8.GetBytes($"{accountId}:{apiKey}");
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+                    
+                    var response = await client.SendAsync(request);
+                    return response.IsSuccessStatusCode;
+                }
+                else if (serviceType.Equals("Meta", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(apiKey)) return false;
+                    
+                    var requestUrl = $"https://graph.facebook.com/v20.0/{accountId}";
+                    var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, requestUrl);
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                    
+                    var response = await client.SendAsync(request);
+                    return response.IsSuccessStatusCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Provider Verification Exception] {ex.Message}");
+            }
+            return false;
         }
 
         [HttpPost("tenants/{tenantId}/toggle-block")]

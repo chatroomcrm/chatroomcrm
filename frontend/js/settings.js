@@ -292,7 +292,7 @@ const Settings = {
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 0.5rem;">
                             <div class="form-group">
                                 <label for="settings-msg-provider" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
-                                    Active Messaging Provider
+                                    Service Type (e.g. Twilio or Meta)
                                 </label>
                                 <select id="settings-msg-provider" class="login-input" onchange="Settings.onMessagingProviderChange(this.value)" style="background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); margin-top: 0.3rem;">
                                     <option value="None">None / Disabled (Simulated Sandbox)</option>
@@ -1354,15 +1354,15 @@ const Settings = {
                 const metaToken = document.getElementById('settings-meta-token');
 
                 if (providerSelect) {
-                    providerSelect.value = config.messagingProvider || 'None';
-                    this.onMessagingProviderChange(config.messagingProvider || 'None');
+                    providerSelect.value = config.serviceType || 'None';
+                    this.onMessagingProviderChange(config.serviceType || 'None');
                 }
                 if (numberInput) numberInput.value = config.whatsAppNumber || '';
                 
-                if (config.messagingProvider === 'Twilio') {
+                if (config.serviceType === 'Twilio') {
                     if (twilioSid) twilioSid.value = config.providerAccountId || '';
                     if (twilioToken) twilioToken.value = config.providerApiKey || '';
-                } else if (config.messagingProvider === 'Meta') {
+                } else if (config.serviceType === 'Meta') {
                     if (metaWabaId) metaWabaId.value = config.providerAccountId || '';
                     if (metaPhoneId) metaPhoneId.value = config.providerSenderId || '';
                     if (metaToken) metaToken.value = config.providerApiKey || '';
@@ -1388,7 +1388,7 @@ const Settings = {
         }
 
         const payload = {
-            messagingProvider: provider === 'None' ? null : provider,
+            serviceType: provider === 'None' ? null : provider,
             whatsAppNumber: whatsAppNumber
         };
 

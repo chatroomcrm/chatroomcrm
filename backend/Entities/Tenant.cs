@@ -12,7 +12,7 @@ namespace ChatFlowCrm.Entities
         public bool IsBlocked { get; set; } = false;
 
         // Unified Dynamic Messaging Architecture
-        public string? MessagingProvider { get; set; } // "Twilio", "Meta", or NULL
+        public string? ServiceType { get; set; } // "Twilio", "Meta", or NULL
         public string WhatsAppNumber { get; set; } = string.Empty; // Shared display number (e.g. "+918143712528")
         
         public string? ProviderAccountId { get; set; } // Twilio AccountSid OR Meta WABA ID

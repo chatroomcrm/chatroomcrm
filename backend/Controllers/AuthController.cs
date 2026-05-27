@@ -344,7 +344,7 @@ namespace ChatFlowCrm.Controllers
 
         public class UpdateMessagingRequest
         {
-            public string? MessagingProvider { get; set; }
+            public string? ServiceType { get; set; }
             public string WhatsAppNumber { get; set; } = string.Empty;
             public string? ProviderAccountId { get; set; }
             public string? ProviderApiKey { get; set; }
@@ -374,7 +374,7 @@ namespace ChatFlowCrm.Controllers
 
             return Ok(new
             {
-                messagingProvider = caller.Tenant.MessagingProvider,
+                serviceType = caller.Tenant.ServiceType,
                 whatsAppNumber = caller.Tenant.WhatsAppNumber,
                 providerAccountId = caller.Tenant.ProviderAccountId,
                 providerApiKey = caller.Tenant.ProviderApiKey,
@@ -403,13 +403,28 @@ namespace ChatFlowCrm.Controllers
                 return BadRequest(new { message = "Only users assigned to a tenant organization can configure messaging settings." });
             }
 
+            // Real-time API credentials verification
+            if (!string.IsNullOrEmpty(request.ServiceType) && !request.ServiceType.Equals("None", StringComparison.OrdinalIgnoreCase))
+            {
+                var isValid = await VerifyProviderCredentialsAsync(
+                    request.ServiceType, 
+                    request.ProviderAccountId, 
+                    request.ProviderApiKey, 
+                    request.ProviderSenderId
+                );
+                if (!isValid)
+                {
+                    return BadRequest(new { message = $"Verification failed for the selected {request.ServiceType} credentials. Please check your Account SID/ID and Token/Key." });
+                }
+            }
+
             var formattedWhatsApp = request.WhatsAppNumber.Trim();
             if (!string.IsNullOrEmpty(formattedWhatsApp))
             {
                 formattedWhatsApp = formattedWhatsApp.Replace("whatsapp:", "").Replace(" ", "").Trim();
             }
 
-            caller.Tenant.MessagingProvider = request.MessagingProvider;
+            caller.Tenant.ServiceType = request.ServiceType;
             caller.Tenant.WhatsAppNumber = formattedWhatsApp;
             caller.Tenant.ProviderAccountId = string.IsNullOrEmpty(request.ProviderAccountId) ? null : request.ProviderAccountId.Trim();
             caller.Tenant.ProviderApiKey = string.IsNullOrEmpty(request.ProviderApiKey) ? null : request.ProviderApiKey.Trim();
@@ -418,12 +433,12 @@ namespace ChatFlowCrm.Controllers
             _context.Tenants.Update(caller.Tenant);
             await _context.SaveChangesAsync();
 
-            await _logger.LogInfoAsync($"Tenant messaging settings updated by {caller.Role} ({caller.Email}): Provider={caller.Tenant.MessagingProvider}, WhatsApp={caller.Tenant.WhatsAppNumber}", "AuthController.UpdateMessaging", caller.TenantId);
+            await _logger.LogInfoAsync($"Tenant messaging settings updated by {caller.Role} ({caller.Email}): Provider={caller.Tenant.ServiceType}, WhatsApp={caller.Tenant.WhatsAppNumber}", "AuthController.UpdateMessaging", caller.TenantId);
 
             return Ok(new
             {
-                message = "Messaging settings saved successfully.",
-                messagingProvider = caller.Tenant.MessagingProvider,
+                message = "Messaging settings saved and verified successfully.",
+                serviceType = caller.Tenant.ServiceType,
                 whatsAppNumber = caller.Tenant.WhatsAppNumber,
                 providerAccountId = caller.Tenant.ProviderAccountId,
                 providerApiKey = caller.Tenant.ProviderApiKey,
@@ -534,7 +549,7 @@ namespace ChatFlowCrm.Controllers
                 new Claim(ClaimTypes.Email, user.Email),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim("TenantId", user.TenantId?.ToString() ?? ""),
-                new Claim("MessagingProvider", tenant?.MessagingProvider ?? ""),
+                new Claim("ServiceType", tenant?.ServiceType ?? ""),
                 new Claim("TenantWhatsApp", tenant?.WhatsAppNumber ?? ""),
                 new Claim("ProviderAccountId", tenant?.ProviderAccountId ?? ""),
                 new Claim("ProviderApiKey", tenant?.ProviderApiKey ?? ""),
@@ -564,6 +579,42 @@ namespace ChatFlowCrm.Controllers
         private bool VerifyPassword(string password, string hash)
         {
             return HashPassword(password) == hash;
+        }
+
+        private async Task<bool> VerifyProviderCredentialsAsync(string serviceType, string? accountId, string? apiKey, string? senderId)
+        {
+            try
+            {
+                using var client = new HttpClient();
+                if (serviceType.Equals("Twilio", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(apiKey)) return false;
+                    
+                    var requestUrl = $"https://api.twilio.com/2010-04-01/Accounts/{accountId}.json";
+                    var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+                    var authBytes = System.Text.Encoding.UTF8.GetBytes($"{accountId}:{apiKey}");
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
+                    
+                    var response = await client.SendAsync(request);
+                    return response.IsSuccessStatusCode;
+                }
+                else if (serviceType.Equals("Meta", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(apiKey)) return false;
+                    
+                    var requestUrl = $"https://graph.facebook.com/v20.0/{accountId}";
+                    var request = new HttpRequestMessage(HttpMethod.Get, requestUrl);
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+                    
+                    var response = await client.SendAsync(request);
+                    return response.IsSuccessStatusCode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Provider Verification Exception] {ex.Message}");
+            }
+            return false;
         }
     }
 }
