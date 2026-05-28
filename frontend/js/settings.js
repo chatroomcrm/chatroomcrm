@@ -65,7 +65,6 @@ const Settings = {
             } else if (currentUser.role === UserRoles.TenantAdmin) {
                 await this.loadTeamRegistry();
                 await this.loadCurrentBranding();
-                await this.loadCurrentMessaging();
             }
         }
 
@@ -232,6 +231,93 @@ const Settings = {
                             <button class="login-mode-btn" id="btn-logs-next" onclick="Settings.changeLogsPage(1)" style="padding:0.25rem 0.5rem; font-size:0.65rem;">Next ▶</button>
                         </div>
                     </div>
+
+                    <!-- Unified WhatsApp Channel Configuration Panel for SuperAdmin -->
+                    <div class="settings-card" style="display:flex; flex-direction:column; gap:1.25rem; background: rgba(15, 22, 42, 0.4); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px;">
+                        <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; border-left: 3px solid var(--theme-glow); padding-left: 0.5rem; margin:0; display:flex; align-items:center; gap:0.5rem;">
+                            💬 WhatsApp Channel Configuration (Platform Admin)
+                        </h3>
+                        <p style="color:var(--text-muted); font-size:0.75rem; margin:0;">
+                            Configure messaging parameters for any tenant organization globally. Select the organization from the dropdown, choose their active provider (Twilio or Meta Cloud API), fill in the shared credentials, and click save.
+                        </p>
+
+                        <div class="form-group" style="margin-top: 0.5rem;">
+                            <label for="settings-sa-tenant-select" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                                Select Organization to Configure
+                            </label>
+                            <select id="settings-sa-tenant-select" class="login-input" onchange="Settings.onSuperAdminTenantChange(this.value)" style="background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); margin-top: 0.3rem;">
+                                <option value="">-- Choose Tenant Organization --</option>
+                            </select>
+                        </div>
+
+                        <div id="settings-sa-messaging-controls" style="display:none; flex-direction:column; gap:1.25rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 0.5rem;">
+                                <div class="form-group">
+                                    <label for="settings-msg-provider" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                                        Service Type (e.g. Twilio or Meta)
+                                    </label>
+                                    <select id="settings-msg-provider" class="login-input" onchange="Settings.onMessagingProviderChange(this.value)" style="background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); margin-top: 0.3rem;">
+                                        <option value="None">None / Disabled (Simulated Sandbox)</option>
+                                        <option value="Twilio">Twilio WhatsApp Service</option>
+                                        <option value="Meta">Meta Cloud API (WhatsApp Business)</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                                        Customer-Facing WhatsApp Number
+                                    </label>
+                                    <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                                        <select id="settings-msg-number-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
+                                            ${Settings.getCountryOptionsHtml('+91')}
+                                        </select>
+                                        <input type="text" id="settings-msg-number-number" class="login-input" placeholder="e.g. 8143712528" style="flex-grow: 1; margin: 0;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Twilio configuration block -->
+                            <div id="settings-twilio-section" style="display:none; flex-direction:column; gap:1.25rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
+                                <h4 style="margin: 0; font-size: 0.8rem; color: var(--theme-glow); font-family: var(--font-display); font-weight: 600;">🔑 Twilio Credentials Configuration</h4>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
+                                    <div class="form-group">
+                                        <label for="settings-twilio-sid" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Account SID</label>
+                                        <input type="text" id="settings-twilio-sid" class="login-input" placeholder="Enter Twilio Account SID (e.g. AC...)" style="margin-top:0.3rem;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="settings-twilio-token" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Auth Token</label>
+                                        <input type="password" id="settings-twilio-token" class="login-input" placeholder="Enter Twilio Auth Token" style="margin-top:0.3rem;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Dynamic Meta configuration block -->
+                            <div id="settings-meta-section" style="display:none; flex-direction:column; gap:1.25rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
+                                <h4 style="margin: 0; font-size: 0.8rem; color: var(--theme-glow); font-family: var(--font-display); font-weight: 600;">🔑 Meta Cloud API Credentials Configuration</h4>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; row-gap: 1rem;">
+                                    <div class="form-group">
+                                        <label for="settings-meta-waba-id" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">WhatsApp Business Account ID (WABA ID)</label>
+                                        <input type="text" id="settings-meta-waba-id" class="login-input" placeholder="Enter Meta WABA ID" style="margin-top:0.3rem;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="settings-meta-phone-id" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number ID</label>
+                                        <input type="text" id="settings-meta-phone-id" class="login-input" placeholder="Enter Meta Phone Number ID" style="margin-top:0.3rem;">
+                                    </div>
+                                    <div class="form-group" style="grid-column: span 2;">
+                                        <label for="settings-meta-token" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Meta Access Token (System User Permanent Token)</label>
+                                        <textarea id="settings-meta-token" class="login-input" rows="2" placeholder="Enter Permanent Meta Access Token" style="margin-top:0.3rem; height: auto; resize: vertical; font-family:var(--font-mono); font-size:0.7rem; padding: 0.5rem;"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
+                                <button onclick="Settings.saveMessagingSettings()" class="login-submit-btn" style="width: auto; padding: 0.5rem 1.5rem; font-size: 0.75rem; margin:0;">
+                                    Save Messaging Config 💾
+                                </button>
+                                <span id="messaging-settings-status" style="color:var(--text-muted); font-size:0.7rem;"></span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
         } else {
@@ -321,82 +407,6 @@ const Settings = {
                             </table>
                         </div>
                     </div>
-
-                    <!-- Unified WhatsApp Channel Configuration Panel -->
-                    <div class="settings-card" style="display:flex; flex-direction:column; gap:1.25rem; grid-column: span 2;">
-                        <h3 style="font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; border-left: 3px solid var(--theme-glow); padding-left: 0.5rem; margin:0; display:flex; align-items:center; gap:0.5rem;">
-                            💬 WhatsApp Channel Configuration
-                        </h3>
-                        <p style="color:var(--text-muted); font-size:0.75rem; margin:0;">
-                            Configure your custom messaging channel dynamically. Select your preferred provider (Twilio or Meta Cloud API), fill in the shared credentials, and all incoming/outgoing logs will route through this tenant space automatically.
-                        </p>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-top: 0.5rem;">
-                            <div class="form-group">
-                                <label for="settings-msg-provider" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
-                                    Service Type (e.g. Twilio or Meta)
-                                </label>
-                                <select id="settings-msg-provider" class="login-input" onchange="Settings.onMessagingProviderChange(this.value)" style="background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); margin-top: 0.3rem;">
-                                    <option value="None">None / Disabled (Simulated Sandbox)</option>
-                                    <option value="Twilio">Twilio WhatsApp Service</option>
-                                    <option value="Meta">Meta Cloud API (WhatsApp Business)</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
-                                    Customer-Facing WhatsApp Number
-                                </label>
-                                <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
-                                    <select id="settings-msg-number-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
-                                        ${Settings.getCountryOptionsHtml('+91')}
-                                    </select>
-                                    <input type="text" id="settings-msg-number-number" class="login-input" placeholder="e.g. 8143712528" style="flex-grow: 1; margin: 0;">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Dynamic Twilio configuration block -->
-                        <div id="settings-twilio-section" style="display:none; flex-direction:column; gap:1.25rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
-                            <h4 style="margin: 0; font-size: 0.8rem; color: var(--theme-glow); font-family: var(--font-display); font-weight: 600;">🔑 Twilio Credentials Configuration</h4>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem;">
-                                <div class="form-group">
-                                    <label for="settings-twilio-sid" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Account SID</label>
-                                    <input type="text" id="settings-twilio-sid" class="login-input" placeholder="Enter Twilio Account SID (e.g. AC...)" style="margin-top:0.3rem;">
-                                </div>
-                                <div class="form-group">
-                                    <label for="settings-twilio-token" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Auth Token</label>
-                                    <input type="password" id="settings-twilio-token" class="login-input" placeholder="Enter Twilio Auth Token" style="margin-top:0.3rem;">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Dynamic Meta configuration block -->
-                        <div id="settings-meta-section" style="display:none; flex-direction:column; gap:1.25rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
-                            <h4 style="margin: 0; font-size: 0.8rem; color: var(--theme-glow); font-family: var(--font-display); font-weight: 600;">🔑 Meta Cloud API Credentials Configuration</h4>
-                            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.25rem; row-gap: 1rem;">
-                                <div class="form-group">
-                                    <label for="settings-meta-waba-id" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">WhatsApp Business Account ID (WABA ID)</label>
-                                    <input type="text" id="settings-meta-waba-id" class="login-input" placeholder="Enter Meta WABA ID" style="margin-top:0.3rem;">
-                                </div>
-                                <div class="form-group">
-                                    <label for="settings-meta-phone-id" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number ID</label>
-                                    <input type="text" id="settings-meta-phone-id" class="login-input" placeholder="Enter Meta Phone Number ID" style="margin-top:0.3rem;">
-                                </div>
-                                <div class="form-group" style="grid-column: span 2;">
-                                    <label for="settings-meta-token" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Meta Access Token (System User Permanent Token)</label>
-                                    <textarea id="settings-meta-token" class="login-input" rows="2" placeholder="Enter Permanent Meta Access Token" style="margin-top:0.3rem; height: auto; resize: vertical; font-family:var(--font-mono); font-size:0.7rem; padding: 0.5rem;"></textarea>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="display:flex; justify-content:space-between; align-items:center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.25rem; margin-top: 0.5rem;">
-                            <button onclick="Settings.saveMessagingSettings()" class="login-submit-btn" style="width: auto; padding: 0.5rem 1.5rem; font-size: 0.75rem; margin:0;">
-                                Save Messaging Config 💾
-                            </button>
-                            <span id="messaging-settings-status" style="color:var(--text-muted); font-size:0.7rem;"></span>
-                        </div>
-                    </div>
                 </div>
             `;
         }
@@ -427,6 +437,21 @@ const Settings = {
             await this.loadTenants();
             await this.loadUsers();
             await this.loadSystemLogs();
+
+            // Populate settings-sa-tenant-select dropdown with ALL tenants!
+            const selectEl = document.getElementById('settings-sa-tenant-select');
+            if (selectEl) {
+                const prevVal = selectEl.value;
+                selectEl.innerHTML = '<option value="">-- Choose Tenant Organization --</option>';
+                if (data.tenantBreakdown) {
+                    data.tenantBreakdown.forEach(t => {
+                        selectEl.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+                    });
+                }
+                if (prevVal) {
+                    selectEl.value = prevVal;
+                }
+            }
         } catch (err) {
             logConsole(`[SuperAdmin API Error] Failed: ${err.message}`);
         }
@@ -1400,10 +1425,33 @@ const Settings = {
         }
     },
 
-    async loadCurrentMessaging() {
+
+
+    async onSuperAdminTenantChange(tenantId) {
+        const controls = document.getElementById('settings-sa-messaging-controls');
+        if (!controls) return;
+
+        if (!tenantId) {
+            controls.style.display = 'none';
+            return;
+        }
+
+        controls.style.display = 'flex';
+        
+        // Reset fields first
+        document.getElementById('settings-msg-provider').value = 'None';
+        this.onMessagingProviderChange('None');
+        document.getElementById('settings-msg-number-country').value = '+91';
+        document.getElementById('settings-msg-number-number').value = '';
+        document.getElementById('settings-twilio-sid').value = '';
+        document.getElementById('settings-twilio-token').value = '';
+        document.getElementById('settings-meta-waba-id').value = '';
+        document.getElementById('settings-meta-phone-id').value = '';
+        document.getElementById('settings-meta-token').value = '';
+
         try {
-            logConsole(`[API Request] GET /api/auth/messaging...`);
-            const res = await Auth.apiFetch('/api/auth/messaging');
+            logConsole(`[SaasAdmin API Request] GET /api/superadmin/tenants/${tenantId}/messaging...`);
+            const res = await Auth.apiFetch(`/api/superadmin/tenants/${tenantId}/messaging`);
             if (res.ok) {
                 const config = await res.json();
                 
@@ -1436,11 +1484,21 @@ const Settings = {
                 }
             }
         } catch (err) {
-            logConsole(`[Messaging API Error] Failed to load messaging settings: ${err.message}`);
+            logConsole(`[SaasAdmin API Error] Failed to load messaging settings: ${err.message}`);
         }
     },
 
     async saveMessagingSettings() {
+        const currentUser = Auth.getUser();
+        if (!currentUser || currentUser.role !== UserRoles.SuperAdmin) return;
+
+        const tenantSelect = document.getElementById('settings-sa-tenant-select');
+        if (!tenantSelect || !tenantSelect.value) {
+            triggerToast("Error", "Please select an organization first.");
+            return;
+        }
+        const url = `/api/superadmin/tenants/${tenantSelect.value}/messaging`;
+
         const providerSelect = document.getElementById('settings-msg-provider');
         const numberCountry = document.getElementById('settings-msg-number-country');
         const numberInput = document.getElementById('settings-msg-number-number');
@@ -1489,8 +1547,8 @@ const Settings = {
         }
 
         try {
-            logConsole(`[API Request] PUT /api/auth/messaging...`);
-            const res = await Auth.apiFetch('/api/auth/messaging', {
+            logConsole(`[API Request] PUT ${url}...`);
+            const res = await Auth.apiFetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1503,8 +1561,11 @@ const Settings = {
                     statusLabel.style.color = 'var(--accent-emerald)';
                 }
                 
-                // Reload session dynamically
-                await this.loadCurrentMessaging();
+                // Reload dynamically
+                if (currentUser.role === UserRoles.SuperAdmin) {
+                    const tenantSelect = document.getElementById('settings-sa-tenant-select');
+                    await this.onSuperAdminTenantChange(tenantSelect.value);
+                }
             } else {
                 const errData = await res.json();
                 triggerToast("Save Error", errData.message || "Failed to save messaging configurations.");

@@ -239,6 +239,76 @@ namespace ChatFlowCrm.Controllers
             return false;
         }
 
+        [HttpGet("tenants/{tenantId}/messaging")]
+        public async Task<IActionResult> GetTenantMessaging(Guid tenantId)
+        {
+            var tenant = await _context.Tenants.FindAsync(tenantId);
+            if (tenant == null)
+            {
+                return NotFound(new { message = "Tenant not found." });
+            }
+
+            return Ok(new
+            {
+                serviceType = tenant.ServiceType,
+                whatsAppNumber = tenant.WhatsAppNumber,
+                providerAccountId = tenant.ProviderAccountId,
+                providerApiKey = tenant.ProviderApiKey,
+                providerSenderId = tenant.ProviderSenderId
+            });
+        }
+
+        public class UpdateTenantMessagingRequest
+        {
+            public string? ServiceType { get; set; }
+            public string WhatsAppNumber { get; set; } = string.Empty;
+            public string? ProviderAccountId { get; set; }
+            public string? ProviderApiKey { get; set; }
+            public string? ProviderSenderId { get; set; }
+        }
+
+        [HttpPut("tenants/{tenantId}/messaging")]
+        public async Task<IActionResult> UpdateTenantMessaging(Guid tenantId, [FromBody] UpdateTenantMessagingRequest request)
+        {
+            var tenant = await _context.Tenants.FindAsync(tenantId);
+            if (tenant == null)
+            {
+                return NotFound(new { message = "Tenant not found." });
+            }
+
+            if (!string.IsNullOrEmpty(request.ServiceType) && !request.ServiceType.Equals("None", StringComparison.OrdinalIgnoreCase))
+            {
+                var isValid = await VerifyProviderCredentialsAsync(
+                    request.ServiceType, 
+                    request.ProviderAccountId, 
+                    request.ProviderApiKey, 
+                    request.ProviderSenderId
+                );
+                if (!isValid)
+                {
+                    return BadRequest(new { message = $"Verification failed for the selected {request.ServiceType} credentials. Please check your Account SID/ID and Token/Key." });
+                }
+            }
+
+            var formattedWhatsApp = request.WhatsAppNumber?.Trim() ?? string.Empty;
+            if (!string.IsNullOrEmpty(formattedWhatsApp))
+            {
+                formattedWhatsApp = formattedWhatsApp.Replace("whatsapp:", "").Replace(" ", "").Trim();
+            }
+
+            tenant.ServiceType = request.ServiceType;
+            tenant.WhatsAppNumber = formattedWhatsApp;
+            tenant.ProviderAccountId = string.IsNullOrEmpty(request.ProviderAccountId) ? null : request.ProviderAccountId.Trim();
+            tenant.ProviderApiKey = string.IsNullOrEmpty(request.ProviderApiKey) ? null : request.ProviderApiKey.Trim();
+            tenant.ProviderSenderId = string.IsNullOrEmpty(request.ProviderSenderId) ? null : request.ProviderSenderId.Trim();
+
+            await _context.SaveChangesAsync();
+
+            await _logger.LogInfoAsync($"SuperAdmin updated tenant messaging settings: Tenant={tenant.Name}, Provider={tenant.ServiceType}", "SuperAdminController.UpdateTenantMessaging");
+
+            return Ok(new { success = true, message = "Tenant messaging configurations updated successfully." });
+        }
+
         [HttpPost("tenants/{tenantId}/toggle-block")]
         public async Task<IActionResult> ToggleTenantBlock(Guid tenantId)
         {
