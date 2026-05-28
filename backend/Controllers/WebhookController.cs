@@ -30,10 +30,8 @@ namespace ChatFlowCrm.Controllers
         [HttpPost("whatsapp")]
         public async Task<IActionResult> Receive()
         {
-            var form = Request.Form;
             Guid finalTenantId = Guid.Empty;
 
-            await _logger.LogInfoAsync($"[Twilio Webhook Received] ContentType={Request.ContentType}, Payload={form}", "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
             try
             {
                 // 1. Resolve Tenant ID manually from query parameters to keep the C# method signature parameterless
@@ -62,34 +60,65 @@ namespace ChatFlowCrm.Controllers
 
                 // 1.5. Log the raw incoming request body or form values securely into LogEntries
                 string rawPayload = string.Empty;
+                string from = string.Empty;
+                string body = string.Empty;
+                string messageSid = string.Empty;
+                string profileName = string.Empty;
+
                 try
                 {
                     if (Request.HasFormContentType)
                     {
                         var formPairs = Request.Form.Select(k => $"{k.Key}={k.Value}");
                         rawPayload = "Form Data: " + string.Join("&", formPairs);
+
+                        from = Request.Form["From"].ToString();
+                        body = Request.Form["Body"].ToString();
+                        messageSid = Request.Form["MessageSid"].ToString();
+                        profileName = Request.Form["ProfileName"].ToString();
                     }
                     else
                     {
                         Request.EnableBuffering();
                         using (var reader = new System.IO.StreamReader(Request.Body, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true, 1024, leaveOpen: true))
                         {
-                            rawPayload = "Raw Body: " + await reader.ReadToEndAsync();
+                            var bodyStr = await reader.ReadToEndAsync();
+                            rawPayload = "Raw Body: " + bodyStr;
                             Request.Body.Position = 0;
+
+                            if (!string.IsNullOrWhiteSpace(bodyStr))
+                            {
+                                try
+                                {
+                                    using (var jsonDoc = JsonDocument.Parse(bodyStr))
+                                    {
+                                        var root = jsonDoc.RootElement;
+                                        if (root.TryGetProperty("From", out var fEl)) from = fEl.GetString() ?? "";
+                                        if (root.TryGetProperty("Body", out var bEl)) body = bEl.GetString() ?? "";
+                                        if (root.TryGetProperty("MessageSid", out var mEl)) messageSid = mEl.GetString() ?? "";
+                                        if (root.TryGetProperty("ProfileName", out var pEl)) profileName = pEl.GetString() ?? "";
+                                    }
+                                }
+                                catch
+                                {
+                                    // Parse failed (e.g. not JSON), fallback to query params or defaults
+                                }
+                            }
                         }
                     }
+
+                    // Fallback to query parameters if fields are still empty
+                    if (string.IsNullOrEmpty(from)) from = Request.Query["From"].ToString();
+                    if (string.IsNullOrEmpty(body)) body = Request.Query["Body"].ToString();
+                    if (string.IsNullOrEmpty(messageSid)) messageSid = Request.Query["MessageSid"].ToString();
+                    if (string.IsNullOrEmpty(profileName)) profileName = Request.Query["ProfileName"].ToString();
+
                     await _logger.LogInfoAsync($"[Twilio Webhook Received] ContentType={Request.ContentType}, Payload={rawPayload}", "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
                 }
                 catch (Exception logEx)
                 {
                     await _logger.LogWarningAsync($"Failed to log raw webhook payload: {logEx.Message}", "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
                 }
-
-                // 2. Parse Twilio webhook form fields
-                var from = Request.Form["From"].ToString(); // Format: whatsapp:+1234567890
-                var body = Request.Form["Body"].ToString();
-                var messageSid = Request.Form["MessageSid"].ToString();
-                var profileName = Request.Form["ProfileName"].ToString(); // Customer's WhatsApp Name
 
                 if (string.IsNullOrEmpty(from) || string.IsNullOrEmpty(body))
                 {

@@ -164,19 +164,25 @@ const Chat = {
     // INBOUND LOGIC (SIGNALR WEBSOCKET CHANNELS)
     // ----------------------------------------------------
     async handleIncomingSocketMessage(msg) {
-        const msgId = msg.messageId || msg.id;
-        const leadId = msg.leadId;
+        const msgId = msg.messageId || msg.MessageId || msg.id || msg.Id;
+        const leadId = msg.leadId || msg.LeadId;
         
-        // Cache the incoming message into database state
-        const exists = db.Messages.find(m => m.Id === msgId || m.id === msgId);
+        if (!msgId) return;
+
+        // Cache the incoming message into database state with case-insensitive check
+        const exists = db.Messages.find(m => {
+            const mId = (m.Id || m.id || '').toString().toLowerCase();
+            const incomingId = (msgId || '').toString().toLowerCase();
+            return mId === incomingId && mId !== '';
+        });
         if (exists) return;
 
         db.Messages.push({
             Id: msgId,
             LeadId: leadId,
-            Content: msg.content,
-            Direction: msg.direction,
-            Timestamp: msg.timestamp
+            Content: msg.content || msg.Content || '',
+            Direction: msg.direction || msg.Direction || 'Incoming',
+            Timestamp: msg.timestamp || msg.Timestamp || new Date().toISOString()
         });
 
         // Trigger visual alerts
@@ -230,7 +236,7 @@ const Chat = {
             }
 
             const msg = await response.json();
-            const msgId = msg.messageId || msg.id;
+            const msgId = msg.messageId || msg.MessageId || msg.id || msg.Id;
             
             // Add to internal caches
             db.Messages.push({
