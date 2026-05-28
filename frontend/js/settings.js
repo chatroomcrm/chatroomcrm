@@ -14,24 +14,46 @@ const Settings = {
     logsSearch: '',
     logsLevel: '',
 
+    countries: [
+        { code: '+91', flag: '🇮🇳', name: 'India' },
+        { code: '+1', flag: '🇺🇸', name: 'USA/Canada' },
+        { code: '+44', flag: '🇬🇧', name: 'UK' },
+        { code: '+61', flag: '🇦🇺', name: 'Australia' },
+        { code: '+49', flag: '🇩🇪', name: 'Germany' },
+        { code: '+33', flag: '🇫🇷', name: 'France' },
+        { code: '+971', flag: '🇦🇪', name: 'UAE' },
+        { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
+        { code: '+65', flag: '🇸🇬', name: 'Singapore' },
+        { code: '+27', flag: '🇿🇦', name: 'South Africa' }
+    ],
+
+    getCountryOptionsHtml(selectedCode) {
+        return this.countries.map(c => 
+            `<option value="${c.code}" ${c.code === selectedCode ? 'selected' : ''}>${c.flag} ${c.code}</option>`
+        ).join('\n');
+    },
+
     parsePhoneNumber(fullPhone) {
         if (!fullPhone) return { countryCode: '+91', localNumber: '' };
+        
         let cleaned = fullPhone.replace(/[\s\-\(\)]/g, '');
-        if (cleaned.startsWith('+')) {
-            const majorCodes = ['+971', '+966', '+380', '+27', '+61', '+64', '+65', '+44', '+49', '+33', '+91', '+1'];
-            for (let code of majorCodes) {
-                if (cleaned.startsWith(code)) {
-                    return { countryCode: code, localNumber: cleaned.substring(code.length) };
-                }
+        
+        if (!cleaned.startsWith('+')) {
+            cleaned = '+' + cleaned;
+        }
+        
+        const sortedCountries = [...this.countries].sort((a, b) => b.code.length - a.code.length);
+        
+        for (let country of sortedCountries) {
+            if (cleaned.startsWith(country.code)) {
+                return { 
+                    countryCode: country.code, 
+                    localNumber: cleaned.substring(country.code.length) 
+                };
             }
         }
-        if (cleaned.length === 12 && cleaned.startsWith('91')) {
-            return { countryCode: '+91', localNumber: cleaned.substring(2) };
-        }
-        if (cleaned.length === 11 && cleaned.startsWith('1')) {
-            return { countryCode: '+1', localNumber: cleaned.substring(1) };
-        }
-        return { countryCode: '+91', localNumber: cleaned };
+        
+        return { countryCode: '+91', localNumber: fullPhone };
     },
 
     async initialize() {
@@ -327,16 +349,7 @@ const Settings = {
                                 </label>
                                 <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
                                     <select id="settings-msg-number-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
-                                        <option value="+91" selected>🇮🇳 +91</option>
-                                        <option value="+1">🇺🇸 +1</option>
-                                        <option value="+44">🇬🇧 +44</option>
-                                        <option value="+61">🇦🇺 +61</option>
-                                        <option value="+49">🇩🇪 +49</option>
-                                        <option value="+33">🇫🇷 +33</option>
-                                        <option value="+971">🇦🇪 +971</option>
-                                        <option value="+966">🇸🇦 +966</option>
-                                        <option value="+65">🇸🇬 +65</option>
-                                        <option value="+27">🇿🇦 +27</option>
+                                        ${Settings.getCountryOptionsHtml('+91')}
                                     </select>
                                     <input type="text" id="settings-msg-number-number" class="login-input" placeholder="e.g. 8143712528" style="flex-grow: 1; margin: 0;">
                                 </div>
@@ -785,16 +798,7 @@ const Settings = {
                             <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
                             <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
                                 <select id="modal-user-phone-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
-                                    <option value="+91" selected>🇮🇳 +91</option>
-                                    <option value="+1">🇺🇸 +1</option>
-                                    <option value="+44">🇬🇧 +44</option>
-                                    <option value="+61">🇦🇺 +61</option>
-                                    <option value="+49">🇩🇪 +49</option>
-                                    <option value="+33">🇫🇷 +33</option>
-                                    <option value="+971">🇦🇪 +971</option>
-                                    <option value="+966">🇸🇦 +966</option>
-                                    <option value="+65">🇸🇬 +65</option>
-                                    <option value="+27">🇿🇦 +27</option>
+                                    ${Settings.getCountryOptionsHtml('+91')}
                                 </select>
                                 <input type="text" id="modal-user-phone-number" class="login-input" placeholder="e.g. 8143712528" required style="flex-grow: 1; margin: 0;">
                             </div>
@@ -954,16 +958,7 @@ const Settings = {
                             <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
                             <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
                                 <select id="edit-user-phone-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
-                                    <option value="+91" ${parsed.countryCode === '+91' ? 'selected' : ''}>🇮🇳 +91</option>
-                                    <option value="+1" ${parsed.countryCode === '+1' ? 'selected' : ''}>🇺🇸 +1</option>
-                                    <option value="+44" ${parsed.countryCode === '+44' ? 'selected' : ''}>🇬🇧 +44</option>
-                                    <option value="+61" ${parsed.countryCode === '+61' ? 'selected' : ''}>🇦🇺 +61</option>
-                                    <option value="+49" ${parsed.countryCode === '+49' ? 'selected' : ''}>🇩🇪 +49</option>
-                                    <option value="+33" ${parsed.countryCode === '+33' ? 'selected' : ''}>🇫🇷 +33</option>
-                                    <option value="+971" ${parsed.countryCode === '+971' ? 'selected' : ''}>🇦🇪 +971</option>
-                                    <option value="+966" ${parsed.countryCode === '+966' ? 'selected' : ''}>🇸🇦 +966</option>
-                                    <option value="+65" ${parsed.countryCode === '+65' ? 'selected' : ''}>🇸🇬 +65</option>
-                                    <option value="+27" ${parsed.countryCode === '+27' ? 'selected' : ''}>🇿🇦 +27</option>
+                                    ${Settings.getCountryOptionsHtml(parsed.countryCode)}
                                 </select>
                                 <input type="text" id="edit-user-phone-number" class="login-input" value="${parsed.localNumber}" required style="flex-grow: 1; margin: 0;">
                             </div>
