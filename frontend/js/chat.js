@@ -25,10 +25,7 @@ const Chat = {
             }
 
             this.connection = new signalR.HubConnectionBuilder()
-                .withUrl(hubUrl, {
-                    skipNegotiation: true,
-                    transport: signalR.HttpTransportType.WebSockets
-                })
+                .withUrl(hubUrl)
                 .withAutomaticReconnect()
                 .build();
 
