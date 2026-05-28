@@ -126,8 +126,7 @@ app.UseMiddleware<ChatFlowCrm.Middleware.ExceptionMiddleware>();
 
 app.UseCors("AllowAll");
 
-// Enable static file serving from wwwroot to host the frontend seamlessly
-app.UseDefaultFiles();
+// Enable static file serving from wwwroot if needed, but disable serving default files
 app.UseStaticFiles();
 
 app.UseAuthentication();
@@ -136,19 +135,10 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHub<ChatHub>("/chathub");
 
-// Simple API status check with automatic static index.html fallback
+// Simple JSON API health check status endpoint
 app.MapGet("/", async (HttpContext context) =>
 {
-    var indexFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
-    if (File.Exists(indexFile))
-    {
-        context.Response.ContentType = "text/html";
-        await context.Response.SendFileAsync(indexFile);
-    }
-    else
-    {
-        await context.Response.WriteAsJsonAsync(new { name = "ChatFlow WhatsApp CRM API", status = "Healthy", version = "1.0.0" });
-    }
+    await context.Response.WriteAsJsonAsync(new { name = "ChatFlow WhatsApp CRM API", status = "Healthy", version = "1.0.0" });
 });
 
 // Automatically seed a default Tenant and User on startup if empty (for direct convenience!)
