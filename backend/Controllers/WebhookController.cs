@@ -30,7 +30,10 @@ namespace ChatFlowCrm.Controllers
         [HttpPost("whatsapp")]
         public async Task<IActionResult> Receive()
         {
+            var form = Request.Form;
             Guid finalTenantId = Guid.Empty;
+
+            await _logger.LogInfoAsync($"[Twilio Webhook Received] ContentType={Request.ContentType}, Payload={form}", "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
             try
             {
                 // 1. Resolve Tenant ID manually from query parameters to keep the C# method signature parameterless
@@ -187,11 +190,11 @@ namespace ChatFlowCrm.Controllers
                     });
                 }
 
-                return Ok(new { success = true, leadId = lead.Id, messageId = message.Id });
+                return Content("<Response></Response>", "text/xml");
             }
             catch (Exception ex)
             {
-                await _logger.LogErrorAsync($"Fatal error in ReceiveWhatsAppMessage webhook: {ex.Message}", ex, "WebhookController.whatsapp", finalTenantId == Guid.Empty ? null : finalTenantId);
+                await _logger.LogErrorAsync($"Fatal error in Receive webhook: {ex.Message}", ex, "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
                 return StatusCode(500, "Error processing Twilio webhook.");
             }
         }
