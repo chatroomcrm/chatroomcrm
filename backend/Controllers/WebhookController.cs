@@ -198,5 +198,75 @@ namespace ChatFlowCrm.Controllers
                 return StatusCode(500, "Error processing Twilio webhook.");
             }
         }
+
+        [HttpPost("twilio-errors")]
+        public async Task<IActionResult> ReceiveTwilioError()
+        {
+            string accountSid = "";
+            string debuggerSid = "";
+            string timestamp = "";
+            string level = "Error";
+            string rawPayload = "";
+
+            try
+            {
+                if (Request.HasFormContentType)
+                {
+                    var form = Request.Form;
+                    accountSid = form["AccountSid"].ToString();
+                    debuggerSid = form["Sid"].ToString();
+                    timestamp = form["Timestamp"].ToString();
+                    level = form["Level"].ToString();
+                    rawPayload = form["Payload"].ToString();
+                }
+                else
+                {
+                    // Parse raw JSON body if posted as application/json
+                    Request.EnableBuffering();
+                    using (var reader = new System.IO.StreamReader(Request.Body, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true, 1024, leaveOpen: true))
+                    {
+                        var bodyStr = await reader.ReadToEndAsync();
+                        using (var jsonDoc = JsonDocument.Parse(bodyStr))
+                        {
+                            var root = jsonDoc.RootElement;
+                            if (root.TryGetProperty("AccountSid", out var accEl)) accountSid = accEl.GetString() ?? "";
+                            if (root.TryGetProperty("Sid", out var sidEl)) debuggerSid = sidEl.GetString() ?? "";
+                            if (root.TryGetProperty("Timestamp", out var timeEl)) timestamp = timeEl.GetString() ?? "";
+                            if (root.TryGetProperty("Level", out var levelEl)) level = levelEl.GetString() ?? "Error";
+                            if (root.TryGetProperty("Payload", out var payEl)) rawPayload = payEl.ToString();
+                        }
+                    }
+                }
+
+                // Format log details
+                string logMessage = $"[Twilio Debugger {level}] EventSid: {debuggerSid}, AccountSid: {accountSid}, Timestamp: {timestamp}, Details: {rawPayload}";
+
+                if (level.Equals("Error", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _logger.LogErrorAsync(
+                        logMessage, 
+                        new Exception($"Twilio Debugger Event. Details: {rawPayload}"), 
+                        "TwilioDebugger.Webhook"
+                    );
+                }
+                else
+                {
+                    await _logger.LogWarningAsync(logMessage, "TwilioDebugger.Webhook");
+                }
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    await _logger.LogErrorAsync($"Fatal error in twilio-errors webhook: {ex.Message}", ex, "TwilioDebugger.Webhook");
+                }
+                catch {}
+                
+                // Return HTTP 200 OK so Twilio doesn't continuously retry failing error logging requests
+                return Ok();
+            }
+        }
     }
 }
