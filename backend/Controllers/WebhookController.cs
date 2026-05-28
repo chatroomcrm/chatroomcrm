@@ -28,16 +28,16 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpPost("whatsapp")]
-        [Consumes("application/x-www-form-urlencoded")]
-        public async Task<IActionResult> ReceiveWhatsAppMessage([FromQuery] Guid? tenantId)
+        public async Task<IActionResult> Receive()
         {
             Guid finalTenantId = Guid.Empty;
             try
             {
-                // 1. Resolve Tenant ID
-                if (tenantId.HasValue)
+                // 1. Resolve Tenant ID manually from query parameters to keep the C# method signature parameterless
+                var queryTenantId = Request.Query["tenantId"].ToString();
+                if (Guid.TryParse(queryTenantId, out var parsedTenantId))
                 {
-                    finalTenantId = tenantId.Value;
+                    finalTenantId = parsedTenantId;
                 }
                 else
                 {
