@@ -14,6 +14,26 @@ const Settings = {
     logsSearch: '',
     logsLevel: '',
 
+    parsePhoneNumber(fullPhone) {
+        if (!fullPhone) return { countryCode: '+91', localNumber: '' };
+        let cleaned = fullPhone.replace(/[\s\-\(\)]/g, '');
+        if (cleaned.startsWith('+')) {
+            const majorCodes = ['+971', '+966', '+380', '+27', '+61', '+64', '+65', '+44', '+49', '+33', '+91', '+1'];
+            for (let code of majorCodes) {
+                if (cleaned.startsWith(code)) {
+                    return { countryCode: code, localNumber: cleaned.substring(code.length) };
+                }
+            }
+        }
+        if (cleaned.length === 12 && cleaned.startsWith('91')) {
+            return { countryCode: '+91', localNumber: cleaned.substring(2) };
+        }
+        if (cleaned.length === 11 && cleaned.startsWith('1')) {
+            return { countryCode: '+1', localNumber: cleaned.substring(1) };
+        }
+        return { countryCode: '+91', localNumber: cleaned };
+    },
+
     async initialize() {
         this.renderPane();
         const currentUser = Auth.getUser();
@@ -302,10 +322,24 @@ const Settings = {
                             </div>
 
                             <div class="form-group">
-                                <label for="settings-msg-number" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
+                                <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">
                                     Customer-Facing WhatsApp Number
                                 </label>
-                                <input type="text" id="settings-msg-number" class="login-input" placeholder="e.g. +918143712528" style="margin-top: 0.3rem;">
+                                <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                                    <select id="settings-msg-number-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
+                                        <option value="+91" selected>🇮🇳 +91</option>
+                                        <option value="+1">🇺🇸 +1</option>
+                                        <option value="+44">🇬🇧 +44</option>
+                                        <option value="+61">🇦🇺 +61</option>
+                                        <option value="+49">🇩🇪 +49</option>
+                                        <option value="+33">🇫🇷 +33</option>
+                                        <option value="+971">🇦🇪 +971</option>
+                                        <option value="+966">🇸🇦 +966</option>
+                                        <option value="+65">🇸🇬 +65</option>
+                                        <option value="+27">🇿🇦 +27</option>
+                                    </select>
+                                    <input type="text" id="settings-msg-number-number" class="login-input" placeholder="e.g. 8143712528" style="flex-grow: 1; margin: 0;">
+                                </div>
                             </div>
                         </div>
 
@@ -352,7 +386,6 @@ const Settings = {
                     </div>
                 </div>
             `;
-        }
         }
     },
 
@@ -749,8 +782,22 @@ const Settings = {
                         </div>
 
                         <div class="form-group">
-                            <label for="modal-user-phone" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
-                            <input type="text" id="modal-user-phone" class="login-input" placeholder="e.g. +15550100" required style="margin-top: 0.3rem;">
+                            <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
+                            <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                                <select id="modal-user-phone-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
+                                    <option value="+91" selected>🇮🇳 +91</option>
+                                    <option value="+1">🇺🇸 +1</option>
+                                    <option value="+44">🇬🇧 +44</option>
+                                    <option value="+61">🇦🇺 +61</option>
+                                    <option value="+49">🇩🇪 +49</option>
+                                    <option value="+33">🇫🇷 +33</option>
+                                    <option value="+971">🇦🇪 +971</option>
+                                    <option value="+966">🇸🇦 +966</option>
+                                    <option value="+65">🇸🇬 +65</option>
+                                    <option value="+27">🇿🇦 +27</option>
+                                </select>
+                                <input type="text" id="modal-user-phone-number" class="login-input" placeholder="e.g. 8143712528" required style="flex-grow: 1; margin: 0;">
+                            </div>
                         </div>
 
                         ${roleOptionsHtml}
@@ -784,11 +831,13 @@ const Settings = {
         const name = document.getElementById('modal-user-name').value.trim();
         const email = document.getElementById('modal-user-email').value.trim();
         const password = document.getElementById('modal-user-password').value.trim();
-        const phone = document.getElementById('modal-user-phone').value.trim();
+        const countryCode = document.getElementById('modal-user-phone-country').value;
+        const localNum = document.getElementById('modal-user-phone-number').value.trim();
+        const phone = localNum ? (countryCode + localNum) : '';
         const role = document.getElementById('modal-user-role').value;
 
-        if (!name || !email || !password || !phone) {
-            errBox.innerText = "Please fill in all required fields.";
+        if (!name || !email || !password || !localNum) {
+            errBox.innerText = "Please fill in all required fields, including a valid phone number.";
             errBox.style.display = 'block';
             return;
         }
@@ -871,6 +920,8 @@ const Settings = {
             `;
         }
 
+        const parsed = this.parsePhoneNumber(phone);
+
         const modalHtml = `
             <div id="edit-user-modal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(8, 12, 22, 0.7); backdrop-filter: blur(8px); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 2rem 1rem; box-sizing: border-box; z-index: 1000; animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
                 <div class="login-card" style="width: 440px; border: 1px solid var(--border-color); background: rgba(15, 22, 42, 0.9); box-shadow: 0 20px 40px rgba(0,0,0,0.5); padding: 2.25rem; position: relative; margin: auto;">
@@ -900,8 +951,22 @@ const Settings = {
                         </div>
 
                         <div class="form-group">
-                            <label for="edit-user-phone" style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
-                            <input type="text" id="edit-user-phone" class="login-input" value="${phone}" required style="margin-top: 0.3rem;">
+                            <label style="font-size:0.7rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Phone Number</label>
+                            <div class="phone-input-row" style="display: flex; gap: 0.5rem; margin-top: 0.3rem;">
+                                <select id="edit-user-phone-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
+                                    <option value="+91" ${parsed.countryCode === '+91' ? 'selected' : ''}>🇮🇳 +91</option>
+                                    <option value="+1" ${parsed.countryCode === '+1' ? 'selected' : ''}>🇺🇸 +1</option>
+                                    <option value="+44" ${parsed.countryCode === '+44' ? 'selected' : ''}>🇬🇧 +44</option>
+                                    <option value="+61" ${parsed.countryCode === '+61' ? 'selected' : ''}>🇦🇺 +61</option>
+                                    <option value="+49" ${parsed.countryCode === '+49' ? 'selected' : ''}>🇩🇪 +49</option>
+                                    <option value="+33" ${parsed.countryCode === '+33' ? 'selected' : ''}>🇫🇷 +33</option>
+                                    <option value="+971" ${parsed.countryCode === '+971' ? 'selected' : ''}>🇦🇪 +971</option>
+                                    <option value="+966" ${parsed.countryCode === '+966' ? 'selected' : ''}>🇸🇦 +966</option>
+                                    <option value="+65" ${parsed.countryCode === '+65' ? 'selected' : ''}>🇸🇬 +65</option>
+                                    <option value="+27" ${parsed.countryCode === '+27' ? 'selected' : ''}>🇿🇦 +27</option>
+                                </select>
+                                <input type="text" id="edit-user-phone-number" class="login-input" value="${parsed.localNumber}" required style="flex-grow: 1; margin: 0;">
+                            </div>
                         </div>
 
                         ${roleOptionsHtml}
@@ -921,7 +986,9 @@ const Settings = {
         const name = document.getElementById('edit-user-name').value.trim();
         const email = document.getElementById('edit-user-email').value.trim();
         const password = document.getElementById('edit-user-password').value;
-        const phone = document.getElementById('edit-user-phone').value.trim();
+        const countryCode = document.getElementById('edit-user-phone-country').value;
+        const localNum = document.getElementById('edit-user-phone-number').value.trim();
+        const phone = localNum ? (countryCode + localNum) : '';
         
         const errBox = document.getElementById('edit-modal-err-box');
         if (errBox) {
@@ -929,7 +996,7 @@ const Settings = {
             errBox.innerText = '';
         }
 
-        if (!name || !email || !phone) {
+        if (!name || !email || !localNum) {
             if (errBox) {
                 errBox.style.display = 'block';
                 errBox.innerText = 'Full Name, Email, and Phone Number are required.';
@@ -1346,7 +1413,8 @@ const Settings = {
                 const config = await res.json();
                 
                 const providerSelect = document.getElementById('settings-msg-provider');
-                const numberInput = document.getElementById('settings-msg-number');
+                const numberCountry = document.getElementById('settings-msg-number-country');
+                const numberInput = document.getElementById('settings-msg-number-number');
                 const twilioSid = document.getElementById('settings-twilio-sid');
                 const twilioToken = document.getElementById('settings-twilio-token');
                 const metaWabaId = document.getElementById('settings-meta-waba-id');
@@ -1357,7 +1425,11 @@ const Settings = {
                     providerSelect.value = config.serviceType || 'None';
                     this.onMessagingProviderChange(config.serviceType || 'None');
                 }
-                if (numberInput) numberInput.value = config.whatsAppNumber || '';
+                if (numberInput && numberCountry) {
+                    const parsed = this.parsePhoneNumber(config.whatsAppNumber || '');
+                    numberCountry.value = parsed.countryCode;
+                    numberInput.value = parsed.localNumber;
+                }
                 
                 if (config.serviceType === 'Twilio') {
                     if (twilioSid) twilioSid.value = config.providerAccountId || '';
@@ -1375,11 +1447,14 @@ const Settings = {
 
     async saveMessagingSettings() {
         const providerSelect = document.getElementById('settings-msg-provider');
-        const numberInput = document.getElementById('settings-msg-number');
-        if (!providerSelect || !numberInput) return;
+        const numberCountry = document.getElementById('settings-msg-number-country');
+        const numberInput = document.getElementById('settings-msg-number-number');
+        if (!providerSelect || !numberInput || !numberCountry) return;
 
         const provider = providerSelect.value;
-        const whatsAppNumber = numberInput.value.trim();
+        const countryCode = numberCountry.value;
+        const localNum = numberInput.value.trim();
+        const whatsAppNumber = localNum ? (countryCode + localNum) : '';
 
         const statusLabel = document.getElementById('messaging-settings-status');
         if (statusLabel) {
