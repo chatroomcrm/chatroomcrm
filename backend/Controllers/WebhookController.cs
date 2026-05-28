@@ -57,6 +57,31 @@ namespace ChatFlowCrm.Controllers
                     }
                 }
 
+                // 1.5. Log the raw incoming request body or form values securely into LogEntries
+                string rawPayload = string.Empty;
+                try
+                {
+                    if (Request.HasFormContentType)
+                    {
+                        var formPairs = Request.Form.Select(k => $"{k.Key}={k.Value}");
+                        rawPayload = "Form Data: " + string.Join("&", formPairs);
+                    }
+                    else
+                    {
+                        Request.EnableBuffering();
+                        using (var reader = new System.IO.StreamReader(Request.Body, System.Text.Encoding.UTF8, detectEncodingFromByteOrderMarks: true, 1024, leaveOpen: true))
+                        {
+                            rawPayload = "Raw Body: " + await reader.ReadToEndAsync();
+                            Request.Body.Position = 0;
+                        }
+                    }
+                    await _logger.LogInfoAsync($"[Twilio Webhook Received] ContentType={Request.ContentType}, Payload={rawPayload}", "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
+                }
+                catch (Exception logEx)
+                {
+                    await _logger.LogWarningAsync($"Failed to log raw webhook payload: {logEx.Message}", "WebhookController.Receive", finalTenantId == Guid.Empty ? null : finalTenantId);
+                }
+
                 // 2. Parse Twilio webhook form fields
                 var from = Request.Form["From"].ToString(); // Format: whatsapp:+1234567890
                 var body = Request.Form["Body"].ToString();
