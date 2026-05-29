@@ -8,7 +8,7 @@ const AUTH_STORAGE_KEYS = {
     API_URL: 'crm_backend_url'
 };
 
-const DEFAULT_API_URL = 'https://chatroomcrm-001-site1.ktempurl.com';
+const DEFAULT_API_URL = 'https://api.chatroomcrm.com';
 
 // Initialize Auth state
 const Auth = {
@@ -30,16 +30,15 @@ const Auth = {
     },
     
     getApiUrl() {
-        const currentOrigin = window.location.origin;
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
         let stored = localStorage.getItem(AUTH_STORAGE_KEYS.API_URL);
         
         if (!isLocalhost) {
-            // Self-healing: Force cloud URL if we are in the cloud (so localhost caches never bleed in)
-            if (!stored || stored.includes('localhost') || stored.includes('127.0.0.1') || (currentOrigin.startsWith('https://') && stored.startsWith('http://'))) {
-                localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, currentOrigin);
-                return currentOrigin;
+            // Self-healing: Force the production SSL API URL when in the cloud (clears out old ktempurl.com caches)
+            if (!stored || stored.includes('localhost') || stored.includes('127.0.0.1') || stored.includes('ktempurl.com')) {
+                localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, DEFAULT_API_URL);
+                return DEFAULT_API_URL;
             }
             return stored;
         } else {

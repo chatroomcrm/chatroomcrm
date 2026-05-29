@@ -42,19 +42,48 @@ namespace ChatFlowCrm.Controllers
                 }
                 else
                 {
-                    // Fallback to the first tenant in DB for sandbox demonstration
-                    var firstTenant = await _context.Tenants.FirstOrDefaultAsync();
-                    if (firstTenant == null)
+                    // Option B Shared Twilio Account Dynamic Resolution:
+                    // Read the Twilio recipient number ("To") from Request Form/Query and match it to the Tenant's registered WhatsAppNumber in database
+                    string twilioReceiver = string.Empty;
+                    if (Request.HasFormContentType)
                     {
-                        // Create default sandbox tenant if db is empty
-                        var sandboxTenant = new Tenant { Name = "Sandbox Tenant", ThemeColor = "#00f2fe" };
-                        _context.Tenants.Add(sandboxTenant);
-                        await _context.SaveChangesAsync();
-                        finalTenantId = sandboxTenant.Id;
+                        twilioReceiver = Request.Form["To"].ToString();
                     }
-                    else
+                    if (string.IsNullOrEmpty(twilioReceiver))
                     {
-                        finalTenantId = firstTenant.Id;
+                        twilioReceiver = Request.Query["To"].ToString();
+                    }
+
+                    if (!string.IsNullOrEmpty(twilioReceiver))
+                    {
+                        var cleanTo = twilioReceiver.Replace("whatsapp:", "").Replace("+", "").Trim();
+                        var matchingTenant = await _context.Tenants.FirstOrDefaultAsync(t => 
+                            !string.IsNullOrEmpty(t.WhatsAppNumber) && 
+                            (t.WhatsAppNumber.Replace("+", "").Trim().Contains(cleanTo) || 
+                             cleanTo.Contains(t.WhatsAppNumber.Replace("+", "").Trim())));
+                        
+                        if (matchingTenant != null)
+                        {
+                            finalTenantId = matchingTenant.Id;
+                        }
+                    }
+
+                    if (finalTenantId == Guid.Empty)
+                    {
+                        // Fallback to the first tenant in DB for sandbox demonstration
+                        var firstTenant = await _context.Tenants.FirstOrDefaultAsync();
+                        if (firstTenant == null)
+                        {
+                            // Create default sandbox tenant if db is empty
+                            var sandboxTenant = new Tenant { Name = "Sandbox Tenant", ThemeColor = "#00f2fe" };
+                            _context.Tenants.Add(sandboxTenant);
+                            await _context.SaveChangesAsync();
+                            finalTenantId = sandboxTenant.Id;
+                        }
+                        else
+                        {
+                            finalTenantId = firstTenant.Id;
+                        }
                     }
                 }
 
