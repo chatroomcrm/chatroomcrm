@@ -32,17 +32,12 @@ const Auth = {
     getApiUrl() {
         const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
         
-        let stored = localStorage.getItem(AUTH_STORAGE_KEYS.API_URL);
-        
         if (!isLocalhost) {
-            // Self-healing: Force the production SSL API URL when in the cloud (clears out old ktempurl.com caches)
-            if (!stored || stored.includes('localhost') || stored.includes('127.0.0.1') || stored.includes('ktempurl.com')) {
-                localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, DEFAULT_API_URL);
-                return DEFAULT_API_URL;
-            }
-            return stored;
+            // Always return the secure production API URL in the cloud
+            return DEFAULT_API_URL;
         } else {
             // Local dev: Fall back to default local backend SSL port
+            let stored = localStorage.getItem(AUTH_STORAGE_KEYS.API_URL);
             if (!stored || !stored.includes('localhost')) {
                 const localDefault = 'https://localhost:64723';
                 localStorage.setItem(AUTH_STORAGE_KEYS.API_URL, localDefault);
