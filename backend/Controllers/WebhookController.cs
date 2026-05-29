@@ -28,6 +28,7 @@ namespace ChatFlowCrm.Controllers
         }
 
         [HttpPost("whatsapp")]
+        [HttpPost("webhooks/twilio")]
         public async Task<IActionResult> Receive()
         {
             Guid finalTenantId = Guid.Empty;
