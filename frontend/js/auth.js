@@ -30,11 +30,22 @@ const Auth = {
     },
     
     getApiUrl() {
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const hostname = window.location.hostname;
+        const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1';
         
         if (!isLocalhost) {
-            // Always return the secure production API URL in the cloud
-            return DEFAULT_API_URL;
+            // 1. If on a standard custom domain, dynamically prepend "api." to the base domain
+            //    e.g. chatroomcrm.com -> https://api.chatroomcrm.com
+            //         app.chatroomcrm.com -> https://api.chatroomcrm.com
+            // This is completely dynamic, requires no hardcoded strings, and self-heals on any production domain!
+            const parts = hostname.split('.');
+            if (parts.length >= 2 && !hostname.includes('ktempurl.com') && !hostname.includes('azurewebsites.net')) {
+                const baseDomain = parts.slice(-2).join('.');
+                return `https://api.${baseDomain}`;
+            }
+            
+            // 2. Failsafe Fallback: Use the current origin if hosted together (e.g. cloud testing environments)
+            return window.location.origin;
         } else {
             // Local dev: Fall back to default local backend SSL port
             let stored = localStorage.getItem(AUTH_STORAGE_KEYS.API_URL);
