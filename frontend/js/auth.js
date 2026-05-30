@@ -67,12 +67,16 @@ const Auth = {
         localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(user));
     },
     
-    logout() {
+    logout(message = null) {
         localStorage.removeItem(AUTH_STORAGE_KEYS.TOKEN);
         localStorage.removeItem(AUTH_STORAGE_KEYS.USER);
         
-        // Reload page to show login screen clean
-        window.location.reload();
+        if (message) {
+            sessionStorage.setItem('crm_logout_msg', message);
+        }
+        
+        // Force redirect to root path to cleanly reload state and trigger login overlay
+        window.location.href = window.location.origin + window.location.pathname;
     },
 
     // Perform API call with Bearer authentication
@@ -94,8 +98,8 @@ const Auth = {
         });
         
         if (response.status === 401) {
-            // Unauthenticated
-            this.logout();
+            // Unauthenticated - redirect to login overlay with expired session message
+            this.logout("Your session has expired. Please log in again.");
             throw new Error("Your session has expired. Please log in again.");
         }
         
@@ -240,6 +244,13 @@ function showLoginOverlay() {
 
 // Prefill saved credentials on DOM Content Loaded
 document.addEventListener("DOMContentLoaded", () => {
+    // Check if there's an expired session or logout message to display dynamically
+    const logoutMsg = sessionStorage.getItem('crm_logout_msg');
+    if (logoutMsg) {
+        showLoginError(logoutMsg);
+        sessionStorage.removeItem('crm_logout_msg');
+    }
+
     const rememberEmail = localStorage.getItem('crm_remembered_email');
     const rememberPassword = localStorage.getItem('crm_remembered_password');
     if (rememberEmail) {

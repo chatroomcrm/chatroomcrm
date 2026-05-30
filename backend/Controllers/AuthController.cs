@@ -454,10 +454,16 @@ namespace ChatFlowCrm.Controllers
                 new Claim("ProviderSenderId", tenant?.ProviderSenderId ?? "")
             };
 
+            var expHoursStr = _configuration["Jwt:SessionExpirationHours"] ?? "24"; // default to 24 hours
+            if (!double.TryParse(expHoursStr, out var expHours))
+            {
+                expHours = 24;
+            }
+
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddHours(expHours),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
                 Issuer = _configuration["Jwt:Issuer"] ?? "ChatFlowCrm",
                 Audience = _configuration["Jwt:Audience"] ?? "ChatFlowClients"
