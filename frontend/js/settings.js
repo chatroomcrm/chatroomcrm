@@ -271,7 +271,7 @@ const Settings = {
                                         <select id="settings-msg-number-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
                                             ${Settings.getCountryOptionsHtml('+91')}
                                         </select>
-                                        <input type="text" id="settings-msg-number-number" class="login-input" placeholder="e.g. 8143712528" style="flex-grow: 1; margin: 0;">
+                                        <input type="text" id="settings-msg-number-number" class="login-input" placeholder="e.g. 9876543210" style="flex-grow: 1; margin: 0;">
                                     </div>
                                 </div>
                             </div>
@@ -825,7 +825,7 @@ const Settings = {
                                 <select id="modal-user-phone-country" class="login-input" style="width: 100px; background: var(--bg-secondary); color: var(--text-main); border: 1px solid var(--border-color); flex-shrink: 0; padding: 0.45rem 0.5rem; font-size: 0.8rem;">
                                     ${Settings.getCountryOptionsHtml('+91')}
                                 </select>
-                                <input type="text" id="modal-user-phone-number" class="login-input" placeholder="e.g. 8143712528" required style="flex-grow: 1; margin: 0;">
+                                <input type="text" id="modal-user-phone-number" class="login-input" placeholder="e.g. 9876543210" required style="flex-grow: 1; margin: 0;">
                             </div>
                         </div>
 
