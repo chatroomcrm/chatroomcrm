@@ -252,6 +252,123 @@ namespace ChatFlowCrm.Controllers
             });
         }
 
+        [HttpPost("sync")]
+        public async Task<IActionResult> SyncTemplatesFromMeta([FromQuery] Guid? tenantId)
+        {
+            var finalTenantId = ResolveTenantId(tenantId);
+            var tenant = await _context.Tenants.FindAsync(finalTenantId);
+            if (tenant == null)
+            {
+                return BadRequest("Tenant not found.");
+            }
+
+            var providerToken = !string.IsNullOrEmpty(tenant.ProviderApiKey) ? tenant.ProviderApiKey : _configuration["Meta:AccessToken"];
+            var wabaId = tenant.ProviderAccountId;
+
+            if (string.IsNullOrEmpty(providerToken) || string.IsNullOrEmpty(wabaId) || wabaId == "PLACEHOLDER")
+            {
+                return BadRequest("Meta Business credentials (WABA ID or Access Token) are not configured for this tenant.");
+            }
+
+            try
+            {
+                var url = $"https://graph.facebook.com/v20.0/{wabaId}/message_templates?limit=100";
+                var request = new HttpRequestMessage(HttpMethod.Get, url);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", providerToken);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                var response = await _httpClient.SendAsync(request);
+                if (!response.IsSuccessStatusCode)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    await _logger.LogErrorAsync($"Meta templates fetch failed (HTTP {response.StatusCode}): {err}", null, "TemplatesController.Sync", finalTenantId);
+                    return StatusCode((int)response.StatusCode, $"Failed to fetch templates from Meta API: {err}");
+                }
+
+                var content = await response.Content.ReadAsStringAsync();
+                using var doc = JsonDocument.Parse(content);
+                if (!doc.RootElement.TryGetProperty("data", out var dataArray) || dataArray.ValueKind != JsonValueKind.Array)
+                {
+                    return Ok(new { success = true, syncedCount = 0, message = "No templates found on Meta." });
+                }
+
+                int syncedCount = 0;
+                var now = DateTimeOffset.UtcNow;
+
+                foreach (var item in dataArray.EnumerateArray())
+                {
+                    string name = item.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
+                    string category = item.TryGetProperty("category", out var c) ? c.GetString() ?? "UTILITY" : "UTILITY";
+                    string language = item.TryGetProperty("language", out var l) ? l.GetString() ?? "en_US" : "en_US";
+                    string status = item.TryGetProperty("status", out var s) ? s.GetString() ?? "APPROVED" : "APPROVED";
+                    
+                    // Extract body text from components
+                    string body = "";
+                    if (item.TryGetProperty("components", out var components) && components.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var component in components.EnumerateArray())
+                        {
+                            if (component.TryGetProperty("type", out var typeProp) && 
+                                (typeProp.GetString() ?? "").Equals("BODY", StringComparison.OrdinalIgnoreCase))
+                            {
+                                body = component.TryGetProperty("text", out var textProp) ? textProp.GetString() ?? "" : "";
+                                break;
+                            }
+                        }
+                    }
+
+                    if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(body))
+                    {
+                        continue;
+                    }
+
+                    // Map status format to match CRM values
+                    if (status.Equals("APPROVED", StringComparison.OrdinalIgnoreCase)) status = "Approved";
+                    else if (status.Equals("PENDING", StringComparison.OrdinalIgnoreCase)) status = "Pending";
+                    else if (status.Equals("REJECTED", StringComparison.OrdinalIgnoreCase)) status = "Rejected";
+
+                    // Check for existing record
+                    var existing = await _context.TenantTemplates
+                        .FirstOrDefaultAsync(t => t.TenantId == finalTenantId && t.Name == name);
+
+                    if (existing != null)
+                    {
+                        existing.Category = category;
+                        existing.Language = language;
+                        existing.Body = body;
+                        existing.Status = status;
+                        existing.Timestamp = now;
+                        _context.TenantTemplates.Update(existing);
+                    }
+                    else
+                    {
+                        var newTemplate = new TenantTemplate
+                        {
+                            TenantId = finalTenantId,
+                            Name = name,
+                            Category = category,
+                            Language = language,
+                            Body = body,
+                            Status = status,
+                            Timestamp = now
+                        };
+                        _context.TenantTemplates.Add(newTemplate);
+                    }
+                    syncedCount++;
+                }
+
+                await _context.SaveChangesAsync();
+                await _logger.LogInfoAsync($"Successfully synced {syncedCount} templates from Meta WhatsApp API.", "TemplatesController.Sync", finalTenantId);
+
+                return Ok(new { success = true, syncedCount, message = $"Successfully synced {syncedCount} templates from Meta WhatsApp API." });
+            }
+            catch (Exception ex)
+            {
+                await _logger.LogErrorAsync($"Error syncing templates from Meta API: {ex.Message}", ex, "TemplatesController.Sync", finalTenantId);
+                return StatusCode(500, $"An error occurred during template synchronization: {ex.Message}");
+            }
+        }
+
         private async Task<string?> CreateTemplateOnMetaAsync(Guid tenantId, string wabaId, string accessToken, string name, string category, string language, string body)
         {
             var url = $"https://graph.facebook.com/v20.0/{wabaId}/message_templates";

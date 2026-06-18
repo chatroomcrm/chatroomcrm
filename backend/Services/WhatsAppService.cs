@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -75,6 +76,57 @@ namespace ChatFlowCrm.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Exception inside WhatsAppService orchestrator flow for {Phone}", toPhone);
+                return false;
+            }
+        }
+
+        public async Task<bool> SendWhatsAppTemplateAsync(string toPhone, string templateName, string language, List<string> parameters, string resolvedBody, string providerConfig)
+        {
+            Guid? resolvedTenantId = null;
+            if (Guid.TryParse(providerConfig, out var tenantId))
+            {
+                resolvedTenantId = tenantId;
+            }
+
+            try
+            {
+                string preferredProvider = _configuration["Messaging:PreferredProvider"] ?? "Meta";
+
+                // Dynamically resolve provider from database Tenant configuration
+                if (resolvedTenantId.HasValue)
+                {
+                    var tenant = await _context.Tenants.FindAsync(resolvedTenantId.Value);
+                    if (tenant != null && !string.IsNullOrEmpty(tenant.ServiceType))
+                    {
+                        preferredProvider = tenant.ServiceType;
+                        _logger.LogInformation("Orchestrator resolved active Tenant messaging provider from DB: {Provider}", preferredProvider);
+                    }
+                }
+
+                bool useTwilio = preferredProvider.Equals("Twilio", StringComparison.OrdinalIgnoreCase);
+
+                if (useTwilio)
+                {
+                    _logger.LogInformation("Orchestrating outbound WhatsApp template: Dispatching to Twilio first...");
+                    bool twilioSuccess = await _twilioService.SendWhatsAppTemplateAsync(toPhone, templateName, language, parameters, resolvedBody, resolvedTenantId);
+                    if (twilioSuccess) return true;
+
+                    _logger.LogWarning("Twilio provider did not complete template send successfully. Falling back to Meta Cloud API...");
+                    return await _metaService.SendWhatsAppTemplateAsync(toPhone, templateName, language, parameters, resolvedBody, resolvedTenantId);
+                }
+                else
+                {
+                    _logger.LogInformation("Orchestrating outbound WhatsApp template: Dispatching to Meta first...");
+                    bool metaSuccess = await _metaService.SendWhatsAppTemplateAsync(toPhone, templateName, language, parameters, resolvedBody, resolvedTenantId);
+                    if (metaSuccess) return true;
+
+                    _logger.LogWarning("Meta provider did not complete template send successfully. Falling back to Twilio API...");
+                    return await _twilioService.SendWhatsAppTemplateAsync(toPhone, templateName, language, parameters, resolvedBody, resolvedTenantId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception inside WhatsAppService template orchestrator flow for {Phone}", toPhone);
                 return false;
             }
         }

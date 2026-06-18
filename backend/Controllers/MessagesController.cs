@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
@@ -84,6 +85,8 @@ namespace ChatFlowCrm.Controllers
         {
             public Guid LeadId { get; set; }
             public string Content { get; set; } = string.Empty;
+            public string? TemplateName { get; set; }
+            public List<string>? TemplateParameters { get; set; }
         }
 
         [HttpPost("send")]
@@ -111,23 +114,58 @@ namespace ChatFlowCrm.Controllers
                 return Forbid();
             }
 
-            // 1. Call Outbound WhatsApp Twilio Service
-            var sent = await _whatsAppService.SendWhatsAppMessageAsync(
-                lead.Contact.Phone, 
-                request.Content, 
-                tenantId.ToString()
-            );
+            bool sent = false;
+            string messageBody = request.Content;
+
+            // Check if template sending is requested
+            if (!string.IsNullOrEmpty(request.TemplateName))
+            {
+                var template = await _context.TenantTemplates
+                    .FirstOrDefaultAsync(t => t.TenantId == tenantId && t.Name == request.TemplateName);
+
+                if (template == null)
+                {
+                    return BadRequest($"Template '{request.TemplateName}' not found.");
+                }
+
+                // Resolve parameter place-holders in template body
+                messageBody = template.Body;
+                var paramList = request.TemplateParameters ?? new List<string>();
+                for (int i = 0; i < paramList.Count; i++)
+                {
+                    messageBody = messageBody.Replace($"{{{{{i + 1}}}}}", paramList[i]);
+                }
+
+                // Call template dispatcher on WhatsApp service
+                sent = await _whatsAppService.SendWhatsAppTemplateAsync(
+                    lead.Contact.Phone,
+                    template.Name,
+                    template.Language,
+                    paramList,
+                    messageBody,
+                    tenantId.ToString()
+                );
+            }
+            else
+            {
+                // Call standard free-text dispatch service
+                sent = await _whatsAppService.SendWhatsAppMessageAsync(
+                    lead.Contact.Phone, 
+                    request.Content, 
+                    tenantId.ToString()
+                );
+            }
 
             if (!sent)
             {
-                return StatusCode(500, "Failed to deliver WhatsApp message via Twilio provider.");
+                return StatusCode(500, "Failed to deliver WhatsApp message via provider.");
             }
 
             // 2. Save Outgoing Message in DB
             var message = new Message
             {
                 LeadId = lead.Id,
-                Content = request.Content,
+                Content = messageBody,
                 Direction = "Outgoing",
                 ProviderMessageId = Guid.NewGuid().ToString(), // Simulated output ID if sandbox
                 Timestamp = DateTime.UtcNow,

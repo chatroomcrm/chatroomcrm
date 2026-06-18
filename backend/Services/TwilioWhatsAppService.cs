@@ -14,6 +14,7 @@ namespace ChatFlowCrm.Services
     public interface ITwilioWhatsAppService
     {
         Task<bool> SendWhatsAppMessageAsync(string toPhone, string content, Guid? tenantId);
+        Task<bool> SendWhatsAppTemplateAsync(string toPhone, string templateName, string language, List<string> parameters, string resolvedBody, Guid? tenantId);
     }
 
     public class TwilioWhatsAppService : ITwilioWhatsAppService
@@ -110,6 +111,12 @@ namespace ChatFlowCrm.Services
                 catch {}
                 return false;
             }
+        }
+
+        public async Task<bool> SendWhatsAppTemplateAsync(string toPhone, string templateName, string language, List<string> parameters, string resolvedBody, Guid? tenantId)
+        {
+            _logger.LogInformation("Sending template '{Template}' via Twilio using resolved body matching.", templateName);
+            return await SendWhatsAppMessageAsync(toPhone, resolvedBody, tenantId);
         }
     }
 }

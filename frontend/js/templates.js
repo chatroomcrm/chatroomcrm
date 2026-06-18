@@ -282,6 +282,44 @@ const Templates = {
                 btn.innerText = originalText;
             }
         }
+    },
+
+    syncFromMeta: async function(event) {
+        if (event) event.preventDefault();
+
+        const btn = document.getElementById('btn-sync-templates');
+        const originalText = btn ? btn.innerText : 'Sync from Meta';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = 'Syncing... 🔄';
+        }
+
+        try {
+            const tenantParam = this.selectedTenantId ? `?tenantId=${this.selectedTenantId}` : '';
+            App.logConsole(`[API Request] POST /api/templates/sync${tenantParam}...`);
+            
+            const res = await Auth.apiFetch(`/api/templates/sync${tenantParam}`, {
+                method: 'POST'
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                App.triggerToast("Sync Success!", data.message);
+                
+                // Refresh table
+                await this.loadTemplatesList();
+            } else {
+                const errText = await res.text();
+                App.triggerToast("Sync Failed", errText || `Server returned error status ${res.status}`);
+            }
+        } catch (e) {
+            App.triggerToast("Sync Error", `Connection failed: ${e.message}`);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
     }
 };
 

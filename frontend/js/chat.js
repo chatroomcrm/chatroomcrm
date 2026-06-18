@@ -4,10 +4,12 @@
 
 const Chat = {
     connection: null,
+    activeTemplates: [],
 
     async initialize() {
         await this.connectSignalR();
         await this.loadLiveThreads();
+        await this.loadTenantTemplates();
     },
 
     // ----------------------------------------------------
@@ -209,27 +211,63 @@ const Chat = {
     // SEND OUTBOUND REPLY
     // ----------------------------------------------------
     async sendOutboundReply() {
-        const input = document.getElementById('crm-input-reply');
-        const text = input.value.trim();
-        if (!text) return;
-
+        const select = document.getElementById('crm-template-select');
+        const templateName = select ? select.value : '';
+        
         const activeLead = db.Leads.find(l => l.Id === activeLeadId || l.id === activeLeadId);
         if (!activeLead) return;
 
-        input.value = '';
+        let payload = {
+            leadId: activeLead.Id || activeLead.id
+        };
+        
+        let text = '';
+        
+        if (templateName) {
+            const template = this.activeTemplates.find(t => t.name === templateName);
+            if (!template) return;
+            
+            // Gather parameters
+            const paramInputs = document.querySelectorAll('.crm-template-param-input');
+            const parameters = [];
+            
+            // Sort parameter inputs by their index
+            const sortedInputs = Array.from(paramInputs).sort((a, b) => 
+                parseInt(a.getAttribute('data-index')) - parseInt(b.getAttribute('data-index'))
+            );
+            
+            sortedInputs.forEach(input => {
+                parameters.push(input.value.trim());
+            });
+            
+            payload.templateName = templateName;
+            payload.templateParameters = parameters;
+            
+            // Calculate preview resolved text for local UI display before SignalR roundtrip
+            let bodyText = template.body;
+            parameters.forEach((val, idx) => {
+                bodyText = bodyText.replaceAll(`{{${idx + 1}}}`, val || `{{${idx + 1}}}`);
+            });
+            text = bodyText;
+        } else {
+            const input = document.getElementById('crm-input-reply');
+            text = input.value.trim();
+            if (!text) return;
+            
+            payload.content = text;
+            input.value = '';
+        }
 
         try {
             logConsole(`[API Request] POST /api/messages/send...`);
             const response = await Auth.apiFetch('/api/messages/send', {
                 method: 'POST',
-                body: JSON.stringify({
-                    leadId: activeLead.Id || activeLead.id,
-                    content: text
-                })
+                body: JSON.stringify(payload)
             });
 
             if (!response.ok) {
-                throw new Error("Failed delivering WhatsApp response via API gateway.");
+                const errMsg = await response.text();
+                throw new Error(errMsg || "Failed delivering WhatsApp response via API gateway.");
             }
 
             const msg = await response.json();
@@ -244,7 +282,12 @@ const Chat = {
                 Timestamp: new Date().toISOString()
             });
 
-            logConsole(`[Twilio REST API] Delivery state: SENT to Twilio Provider successfully.`);
+            logConsole(`[Twilio REST API] Delivery state: SENT to Provider successfully.`);
+            
+            // Clear template selection
+            if (templateName) {
+                this.clearTemplateSelection();
+            }
             
         } catch (err) {
             logConsole(`[API Error] Failed sending outbound message: ${err.message}`);
@@ -259,6 +302,142 @@ const Chat = {
         }
         if (typeof DbInspector !== 'undefined') {
             DbInspector.renderTable();
+        }
+    },
+
+    // ----------------------------------------------------
+    // WHATSAPP TEMPLATE INTEGRATION HELPERS
+    // ----------------------------------------------------
+    async loadTenantTemplates() {
+        try {
+            logConsole(`[API Request] Fetching active tenant templates for chat dropdown...`);
+            const res = await Auth.apiFetch('/api/templates?page=1&pageSize=100');
+            if (res.ok) {
+                const data = await res.json();
+                // Filter only Approved or Simulated templates for sending
+                this.activeTemplates = data.filter(t => t.status === 'Approved' || t.status === 'Simulated');
+                this.populateTemplatesDropdown();
+            }
+        } catch (e) {
+            logConsole(`[Templates Error] Failed to load templates: ${e.message}`);
+        }
+    },
+
+    populateTemplatesDropdown() {
+        const select = document.getElementById('crm-template-select');
+        if (!select) return;
+        
+        // Reset selection
+        select.innerHTML = '<option value="">-- Select Approved Template --</option>';
+        
+        if (this.activeTemplates.length === 0) {
+            select.innerHTML += '<option value="" disabled>No approved templates found. Go to Message Templates tab to upload templates.</option>';
+            return;
+        }
+        
+        this.activeTemplates.forEach(t => {
+            select.innerHTML += `<option value="${t.name}">${t.name} (${t.category})</option>`;
+        });
+    },
+
+    handleTemplateChange(templateName) {
+        const clearBtn = document.getElementById('crm-template-clear-btn');
+        const paramsContainer = document.getElementById('crm-template-params-container');
+        const previewContainer = document.getElementById('crm-template-preview');
+        const replyInput = document.getElementById('crm-input-reply');
+        
+        if (!templateName) {
+            this.clearTemplateSelection();
+            return;
+        }
+        
+        const template = this.activeTemplates.find(t => t.name === templateName);
+        if (!template) return;
+        
+        // Show cancel button
+        if (clearBtn) clearBtn.style.display = 'block';
+        
+        // Disable main input text since template mode takes over
+        if (replyInput) {
+            replyInput.disabled = true;
+            replyInput.value = '';
+            replyInput.placeholder = 'Template mode active. Fill placeholders below...';
+        }
+        
+        // Parse placeholders like {{1}}, {{2}} from body
+        const bodyText = template.body;
+        const matches = bodyText.match(/\{\{\d+\}\}/g) || [];
+        // Extract unique variable indexes
+        const uniqueIndices = [...new Set(matches.map(m => parseInt(m.replace(/[\{\}]/g, ''))))].sort((a,b) => a - b);
+        
+        if (paramsContainer) {
+            paramsContainer.innerHTML = '';
+            
+            if (uniqueIndices.length > 0) {
+                paramsContainer.style.display = 'flex';
+                uniqueIndices.forEach(idx => {
+                    paramsContainer.innerHTML += `
+                        <div style="display: flex; align-items: center; gap: 0.5rem; justify-content: space-between;">
+                            <label style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono);">Param {{${idx}}}:</label>
+                            <input type="text" class="crm-template-param-input" data-index="${idx}" placeholder="Value for {{${idx}}}" oninput="Chat.updateTemplatePreview()" style="flex: 1; max-width: 80%; background: #0a0f1d; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; outline: none;">
+                        </div>
+                    `;
+                });
+            } else {
+                paramsContainer.style.display = 'none';
+            }
+        }
+        
+        if (previewContainer) {
+            previewContainer.style.display = 'block';
+            this.updateTemplatePreview();
+        }
+    },
+
+    updateTemplatePreview() {
+        const select = document.getElementById('crm-template-select');
+        const previewContainer = document.getElementById('crm-template-preview');
+        if (!select || !previewContainer) return;
+        
+        const templateName = select.value;
+        if (!templateName) return;
+        
+        const template = this.activeTemplates.find(t => t.name === templateName);
+        if (!template) return;
+        
+        let bodyText = template.body;
+        
+        // Get values of parameters from input fields
+        const paramInputs = document.querySelectorAll('.crm-template-param-input');
+        paramInputs.forEach(input => {
+            const idx = input.getAttribute('data-index');
+            const val = input.value.trim() || `{{${idx}}}`;
+            bodyText = bodyText.replaceAll(`{{${idx}}}`, val);
+        });
+        
+        previewContainer.innerHTML = `<strong>Live Template Preview:</strong><br>${bodyText}`;
+    },
+
+    clearTemplateSelection() {
+        const select = document.getElementById('crm-template-select');
+        const clearBtn = document.getElementById('crm-template-clear-btn');
+        const paramsContainer = document.getElementById('crm-template-params-container');
+        const previewContainer = document.getElementById('crm-template-preview');
+        const replyInput = document.getElementById('crm-input-reply');
+        
+        if (select) select.value = '';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (paramsContainer) {
+            paramsContainer.innerHTML = '';
+            paramsContainer.style.display = 'none';
+        }
+        if (previewContainer) {
+            previewContainer.innerHTML = '';
+            previewContainer.style.display = 'none';
+        }
+        if (replyInput) {
+            replyInput.disabled = false;
+            replyInput.placeholder = 'Type customer reply...';
         }
     },
 

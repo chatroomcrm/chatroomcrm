@@ -243,6 +243,8 @@ function switchView(viewId, btn) {
     // Refresh view states
     if (viewId === 'dashboard') {
         updateDashboardStats();
+    } else if (viewId === 'chats' && typeof Chat !== 'undefined') {
+        Chat.loadTenantTemplates();
     } else if (viewId === 'templates' && typeof Templates !== 'undefined') {
         Templates.loadTemplatesList();
     } else if (viewId === 'database' && typeof DbInspector !== 'undefined') {

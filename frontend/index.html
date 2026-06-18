@@ -259,11 +259,34 @@
               </div>
 
               <!-- Reply Input Bar -->
-              <div class="crm-chat-input-bar">
-                <input type="text" id="crm-input-reply" placeholder="Type customer reply...">
-                <button onclick="sendOutboundMessage()">
-                  Send <svg style="width: 12px; height: 12px; fill: #0a0f1d;" viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" /></svg>
-                </button>
+              <div class="crm-chat-input-bar" style="display: flex; flex-direction: column; gap: 0.5rem; align-items: stretch; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 12px;">
+                <!-- Template Selection area -->
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 0.65rem; color: var(--text-muted); font-family: var(--font-mono); text-transform: uppercase; white-space: nowrap;">Or Send Template:</span>
+                  <select id="crm-template-select" style="flex: 1; background: #0a0f1d; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.75rem; padding: 0.35rem 0.5rem; border-radius: 6px; outline: none; cursor: pointer; font-family: var(--font-display);" onchange="Chat.handleTemplateChange(this.value)">
+                    <option value="">-- Select Approved Template --</option>
+                  </select>
+                  <button id="crm-template-clear-btn" style="display: none; background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.2); color: var(--accent-rose); font-size: 0.65rem; padding: 0.25rem 0.5rem; border-radius: 4px; cursor: pointer; font-family: var(--font-display);" onclick="Chat.clearTemplateSelection()">
+                    Cancel
+                  </button>
+                </div>
+                
+                <!-- Dynamic Parameter Inputs Container -->
+                <div id="crm-template-params-container" style="display: none; flex-direction: column; gap: 0.4rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.03); border-radius: 8px;">
+                  <!-- Dynamically generated inputs for template parameters go here -->
+                </div>
+
+                <!-- Template Body Live Preview -->
+                <div id="crm-template-preview" style="display: none; font-size: 0.7rem; color: var(--theme-glow); background: rgba(0, 242, 254, 0.05); border: 1px dashed rgba(0, 242, 254, 0.2); padding: 0.5rem; border-radius: 6px; line-height: 1.3;">
+                  <!-- Live preview of the message with filled variables -->
+                </div>
+                
+                <div style="display: flex; gap: 0.5rem; align-items: center;" id="crm-chat-reply-controls-row">
+                  <input type="text" id="crm-input-reply" placeholder="Type customer reply...">
+                  <button onclick="sendOutboundMessage()">
+                    Send <svg style="width: 12px; height: 12px; fill: #0a0f1d;" viewBox="0 0 24 24"><path d="M2,21L23,12L2,3V10L17,12L2,14V21Z" /></svg>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -424,6 +447,10 @@
                   
                   <button type="submit" id="btn-upload-templates" style="width: 100%; background: linear-gradient(135deg, var(--theme-glow), var(--theme-glow-end)); color: #0a0f1d; border: none; padding: 0.55rem; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.15s ease;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
                     Upload & Register ⚡
+                  </button>
+
+                  <button type="button" id="btn-sync-templates" onclick="Templates.syncFromMeta(event)" style="width: 100%; background: rgba(0, 242, 254, 0.08); border: 1px solid rgba(0, 242, 254, 0.2); color: var(--theme-glow); padding: 0.55rem; margin-top: 0.5rem; border-radius: 6px; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: transform 0.15s ease;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+                    Sync from Meta 🔄
                   </button>
                 </form>
               </div>
